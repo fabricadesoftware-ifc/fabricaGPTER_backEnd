@@ -5,4 +5,4 @@ from core.models import Medico
 class MedicoSerializer(ModelSerializer):
     class Meta:
         model = Medico
-        fields = "_all_"
+        fields = '__all__'

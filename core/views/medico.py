@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
 
-from core.models import Medico
+from core.models.medico import Medico
 from core.serializers.medico import MedicoSerializer
 
 

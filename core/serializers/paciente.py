@@ -5,4 +5,4 @@ from core.models import Paciente
 class PacienteSerializer(ModelSerializer):
     class Meta:
         model = Paciente
-        fields = "_all_"
+        fields = '__all__'

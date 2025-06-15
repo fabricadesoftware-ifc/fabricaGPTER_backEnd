@@ -24,9 +24,9 @@ from core.views.medico import MedicoViewSet
 
 router = DefaultRouter()
 router.register(r"pacientes", PacienteViewSet)
-router.register(r"profissionais", MedicoViewSet)
+router.register(r"medicos", MedicoViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("", include(router.urls)),
+    path("api/", include(router.urls)),
 ]
