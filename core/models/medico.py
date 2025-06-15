@@ -1,12 +1,9 @@
 from django.db import models
 
-from core.models import Medico;
-
-class Paciente(models.Model):
+class Medico(models.Model):
     nome = models.CharField(max_length=255)
     email = models.EmailField(null=True, blank=True)
     telefone = models.CharField(max_length=255)
-    medico = models.ForeignKey(Medico, related_name="livros")
 
     def _str_(self):
         return self.nome
