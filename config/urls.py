@@ -21,10 +21,12 @@ from rest_framework.routers import DefaultRouter
 
 from core.views.paciente import PacienteViewSet
 from core.views.medico import MedicoViewSet
+from core.views.admin import AdminViewSet
 
 router = DefaultRouter()
 router.register(r"pacientes", PacienteViewSet)
 router.register(r"medicos", MedicoViewSet)
+router.register(r"admins", AdminViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
