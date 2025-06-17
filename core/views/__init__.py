@@ -1,1 +1,2 @@
-from .views import Paciente, Medico
+from .paciente import Paciente
+from .medico import Medico

@@ -36,7 +36,9 @@ urlpatterns = [
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
-from core.views.views import MedicoViewSet, PacienteViewSet
+
+from core.views.medico import MedicoViewSet
+from core.views.paciente import PacienteViewSet
 
 router = routers.DefaultRouter()
 router.register(r'medicos', MedicoViewSet)
