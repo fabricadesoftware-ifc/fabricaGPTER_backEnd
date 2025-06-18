@@ -132,6 +132,10 @@ ENV/
 env.bak/
 venv.bak/
 
+# Environments PDM
+.pdm-python
+.pdm-build/
+
 # Spyder project settings
 .spyderproject
 .spyproject
