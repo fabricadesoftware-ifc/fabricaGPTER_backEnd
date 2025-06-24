@@ -3,7 +3,6 @@ from core.models.paciente import Paciente
 from core.models.medico import Medico
 
 from core.serializers.user import UserSerializer
-#from core.serializers.medico import MedicoSerializer
 
 class PacienteSerializer(serializers.ModelSerializer):
     user = UserSerializer()

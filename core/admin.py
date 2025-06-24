@@ -4,6 +4,7 @@ from django.contrib.auth.admin import UserAdmin
 from core.models.user import CustomUser
 from core.models.medico import Medico
 from core.models.paciente import Paciente
+from core.models.exame import Exame
 
 
 class CustomUserAdmin(UserAdmin):
@@ -18,3 +19,4 @@ class CustomUserAdmin(UserAdmin):
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Medico)
 admin.site.register(Paciente)
+admin.site.register(Exame)
