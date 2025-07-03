@@ -9,4 +9,7 @@ class Exame(models.Model):
     paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name='exames', blank=True, null=True)
     forca = models.DecimalField("Força (N)", max_digits=5, decimal_places=1, null=True, blank=True)
     descricao = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return f"Exame do paciente {self.paciente.user}"
     
