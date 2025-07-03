@@ -28,17 +28,17 @@ class ExameViewSet(viewsets.ModelViewSet):
             return Exame.objects.filter(paciente__user=user)
         return Exame.objects.none()
     
-    def perform_create(self, serializer):
-        user = self.request.user
+    #def perform_create(self, serializer):
+     #   user = self.request.user
 
-    try:
-        medico = Medico.objects.get(user=user)
-    except Medico.DoesNotExist:
-        raise PermissionDenied("Você não é um médico válido.")
+    #try:
+     #   medico = Medico.objects.get(user=user)
+    #except Medico.DoesNotExist:
+     #   raise PermissionDenied("Você não é um médico válido.")
 
-    paciente = serializer.validated_data.get('paciente')
+    #paciente = serializer.validated_data.get('paciente')
 
-    if paciente.medico != medico:
-        raise PermissionDenied("Você não tem permissão para criar exames para esse paciente.")
+    #if paciente.medico != medico:
+     #   raise PermissionDenied("Você não tem permissão para criar exames para esse paciente.")
 
-    serializer.save()
+    #serializer.save()
