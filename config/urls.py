@@ -14,5 +14,5 @@ router.register(r'exames', ExameViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
-    #path('pacientes/<int:paciente_id>/exames/', ExamesPorPacienteView.as_view(), #name='exames-por-paciente'),
+    path('api/pacientes/<int:paciente_id>/exames/', ExameViewSet.as_view({'get': 'exames_por_paciente', 'post': 'exames_por_paciente'})),
 ]
