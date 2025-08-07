@@ -7,4 +7,4 @@ class Cidade(models.Model):
     estado = models.ForeignKey(Estado, on_delete=models.PROTECT, null=True, blank=True)
 
     def __str__(self):
-        return f'{self.nome} ({self.sigla})'
+        return f'{self.nome} ({self.estado.sigla})'
