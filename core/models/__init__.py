@@ -1,4 +1,3 @@
-#from .models import Paciente, Medico, CustomUser
-from .paciente import Paciente
-from .medico import Medico
-from .user import CustomUser
+from .estado import Estado
+from .cidade import Cidade
+from .clinica import Clinica
