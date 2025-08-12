@@ -1,5 +1,6 @@
 from django.db import models
-from core.models import UsuarioBase, Clinica
+from .clinica import Clinica
+from .user import UsuarioBase
 
 class Profissional(models.Model):
     usuario = models.OneToOneField(UsuarioBase, on_delete=models.PROTECT)
