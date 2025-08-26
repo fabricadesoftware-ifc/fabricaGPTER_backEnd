@@ -1,38 +1,58 @@
 [project]
 name = "fabricaGPTER_backEnd"
 version = "0.1.0"
-description = "Default template for PDM package"
+description = "Backend Django do projeto FabricaGPTER"
 authors = [
-    {name = "GuilhermeSchreiber7", email = "guilhermeschreieber2007@gmail.com"},
+    {name = "Guilherme Schreiber", email = "guilhermeschreieber2007@gmail.com"},
+    {name = "Erick Chaves Fiamoncini", email = "erickechaves@gmail.com"}
+    {name = "Daniel dos Santos Hinsching", email = "danielsantoshinsching@gmail.com"
 ]
-dependencies = ["django>=5.2.1", "django-extensions>=4.1", "pydotplus>=2.0.2", "python-dotenv>=1.1.0", "netifaces>=0.11.0", "djangorestframework>=3.16.0"]
-requires-python = ">=3.12"
+dependencies = [
+    "django>=4.2.23",
+    "django-extensions>=4.1",
+    "pydotplus>=2.0.2",
+    "python-dotenv>=1.1.0",
+    "netifaces>=0.11.0",
+    "djangorestframework>=3.16.0",
+    "djangorestframework-simplejwt>=5.5.1"
+]
+requires-python = ">=3.9"
 readme = "README.md"
 license = {text = "MIT"}
 
-[build-system]
-requires = ["pdm-backend"]
-build-backend = "pdm.backend"
-
-
 [tool.pdm]
-distribution = true
-
+distribution = false
 
 [tool.pdm.scripts]
+# Ambiente de desenvolvimento
 pre_dev = "python ./scripts/set_my_ip.py"
 dev = "python manage.py runserver 0.0.0.0:19003"
-createsuperuser = "python manage.py createsuperuser"
+
+# Banco de dados
 pre_migrate = "python manage.py makemigrations"
 migrate = "python manage.py migrate"
 post_migrate = "python manage.py graph_models -S -g -o core.png core"
+
+# Administração
+createsuperuser = "python manage.py createsuperuser"
 shell = "python manage.py shell"
 shellp = "python manage.py shell_plus"
+
+# Testes
 test = "python manage.py test"
+
+# Dados
 loaddata = "python manage.py loaddata core.json"
 dumpdata = "python manage.py dumpdata --indent 2"
+
+# Utilitários
 cria_api = "python ./scripts/cria_api.py {args}"
+
+# Lint e formatação
 check = "ruff check"
 pre_format = "ruff check --fix"
 format = "ruff format"
 
+[tool.ruff]
+line-length = 88
+target-version = "py39"
