@@ -1,6 +1,6 @@
 [project]
 name = "fabricaGPTER_backEnd"
-version = "0"
+version = "0.1.0"
 description = "Default template for PDM package"
 authors = [
     {name = "GuilhermeSchreiber7", email = "guilhermeschreieber2007@gmail.com"},
