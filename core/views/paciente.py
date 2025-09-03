@@ -2,12 +2,12 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from core.models.paciente import Paciente
 from core.serializers.paciente import PacienteSerializer
-from core.permissions.permissions import IsAdminOrProfissional
+from core.permissions.permissions import IsAdminOrProfissionalOrSelf
 
 class PacienteViewSet(viewsets.ModelViewSet):
     queryset = Paciente.objects.all()
     serializer_class = PacienteSerializer
-    permission_classes = [IsAuthenticated, IsAdminOrProfissional]
+    permission_classes = [IsAuthenticated, IsAdminOrProfissionalOrSelf]
 
     def get_queryset(self):
         user = self.request.user
