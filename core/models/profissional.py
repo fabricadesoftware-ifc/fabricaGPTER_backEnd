@@ -1,5 +1,4 @@
 from django.db import models
-from .clinica import Clinica
 from .user import UsuarioBase
 
 class Profissional(models.Model):
