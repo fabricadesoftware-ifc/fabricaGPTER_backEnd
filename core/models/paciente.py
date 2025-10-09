@@ -12,7 +12,6 @@ class Paciente(models.Model):
     cep = models.CharField(max_length=10)
     complemento = models.CharField(max_length=200, blank=True, null=True)
     data_nascimento = models.DateField()
-    clinica = models.ForeignKey(Clinica, on_delete=models.PROTECT)
 
     def __str__(self):
         return self.usuario.username
