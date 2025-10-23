@@ -11,6 +11,12 @@ class Paciente(models.Model):
     cep = models.CharField(max_length=10)
     complemento = models.CharField(max_length=200, blank=True, null=True)
     data_nascimento = models.DateField()
+    class MaoDominante(models.TextChoices):
+        DESTRO = 'destro', 'Destro'
+        AMBIDESTRO = 'ambidestro', 'Ambidestro'
+        CANHOTO = 'canhoto', 'Canhoto'
+
+    mao_dominante = models.CharField(max_length=10, choices=MaoDominante.choices, default=MaoDominante.DESTRO)
 
     def __str__(self):
         return self.usuario.username
