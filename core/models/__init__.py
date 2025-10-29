@@ -3,3 +3,4 @@ from .admin import Administrador
 from .profissional import Profissional
 from .user import UsuarioBase
 from .exame import Exame
+from .teste import Teste
