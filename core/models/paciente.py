@@ -3,7 +3,6 @@ from .user import UsuarioBase
 
 class Paciente(models.Model):
     usuario = models.OneToOneField(UsuarioBase, on_delete=models.PROTECT)
-    cpf = models.CharField(max_length=11, unique=True)
     endereco = models.CharField(max_length=150)
     numero = models.IntegerField()
     bairro = models.CharField(max_length=100)
