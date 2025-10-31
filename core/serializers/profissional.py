@@ -5,6 +5,7 @@ from .paciente import PacienteSerializer
 
 class ProfissionalSerializer(serializers.ModelSerializer):
     usuario = UsuarioBaseSerializer()
+
     pacientes_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Paciente.objects.all(),
@@ -16,7 +17,7 @@ class ProfissionalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profissional
-        fields = ['id', 'usuario', 'email', 'data_nascimento', 'pacientes', 'pacientes_ids']
+        fields = ['id', 'usuario', 'telefone', 'pacientes', 'pacientes_ids']
 
     def create(self, validated_data):
         usuario_data = validated_data.pop('usuario')
