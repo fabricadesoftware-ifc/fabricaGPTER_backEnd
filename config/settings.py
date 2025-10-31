@@ -41,7 +41,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     "django_extensions",
     "rest_framework",
+    'uploader',
     'core',
+    'cloudinary_storage',
+    'cloudinary',
 ]
 
 MIDDLEWARE = [
@@ -121,6 +124,28 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# App Uploader settings
+MEDIA_ENDPOINT = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+FILE_UPLOAD_PERMISSIONS = 0o640
+
+if MODE == 'DEVELOPMENT':
+    MY_IP = os.getenv('MY_IP', '127.0.0.1')
+    MEDIA_URL = f'http://{MY_IP}:19003/media/'
+else:
+    MEDIA_URL = '/media/'
+    CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    STORAGES = {
+        'default': {
+            'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+        },
+        'staticfiles': {
+            'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+        },
+    }
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

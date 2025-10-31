@@ -1,5 +1,6 @@
 from django.db import models
 from .user import UsuarioBase
+from uploader.models import Image
 
 class Paciente(models.Model):
     usuario = models.OneToOneField(UsuarioBase, on_delete=models.PROTECT)
@@ -16,6 +17,15 @@ class Paciente(models.Model):
         CANHOTO = 'canhoto', 'Canhoto'
 
     mao_dominante = models.CharField(max_length=10, choices=MaoDominante.choices, default=MaoDominante.DESTRO)
+
+    perfil = models.ForeignKey(
+        Image,
+        related_name="+",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        default=None,
+    )
 
     def __str__(self):
         return self.usuario.username
