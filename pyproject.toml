@@ -8,7 +8,7 @@ authors = [
     {name = "", email = ""},
 ]
 dependencies = [
-    "django>=4.2.25",
+    "django>=4.2.26",
     "django-extensions>=4.1",
     "pydotplus>=2.0.2",
     "python-dotenv>=1.1.0",
