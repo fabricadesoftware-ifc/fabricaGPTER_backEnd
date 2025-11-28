@@ -4,8 +4,8 @@ version = "0.1.0"
 description = "Backend Django do projeto FabricaGPTER"
 authors = [
     {name = "Guilherme Schreiber", email = "guilhermeschreieber2007@gmail.com"},
-    {name = "Erick Chaves Fiamoncini", email = "erickechaves@gmail.com"}
-    {name = "Daniel dos Santos Hinsching", email = "danielsantoshinsching@gmail.com"
+    {name = "Erick Chaves Fiamoncini", email = "erickechaves@gmail.com"},
+    {name = "Daniel dos Santos Hinsching", email = "danielsantoshinsching@gmail.com"}
 ]
 dependencies = [
     "django>=4.2.23",
