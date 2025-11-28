@@ -1,38 +1,20 @@
 from rest_framework import serializers
-from core.models import UsuarioBase
+from django.contrib.auth import get_user_model
 
-class UsuarioBaseSerializer(serializers.ModelSerializer):
-    senha = serializers.CharField(write_only=True, required=True)
-    
+User = get_user_model()
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True)
+
     class Meta:
-        model = UsuarioBase
-        fields = ['id', 'nome', 'email', 'cpf', 'senha', 'is_admin']
-        extra_kwargs = {
-            'senha': {'write_only': True}
-        }
-    
+        model = User
+        fields = ['id', 'username', 'email', 'password']
+
     def create(self, validated_data):
-        senha = validated_data.pop('senha')
-        email = validated_data.get('email')
-        usuario = UsuarioBase(
-            username=email,  
-            **validated_data
+        user = User(
+            username=validated_data["username"],
+            email=validated_data.get("email", "")
         )
-        usuario.set_password(senha)
-        usuario.save()
-        return usuario
-    
-    def update(self, instance, validated_data):
-        senha = validated_data.pop('senha', None)
-        
-        if 'email' in validated_data:
-            instance.username = validated_data['email']
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        if senha:
-            instance.set_password(senha)
-        
-        instance.save()
-        return instance
+        user.set_password(validated_data["password"])
+        user.save()
+        return user
