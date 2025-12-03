@@ -1,12 +1,12 @@
 from rest_framework import serializers
 from core.models import Paciente
-from .user import UsuarioBaseSerializer
+from .user import UserSerializer
 from rest_framework.serializers import ModelSerializer, SlugRelatedField
 from uploader.models import Image
 from uploader.serializers import ImageSerializer
 
 class PacienteSerializer(serializers.ModelSerializer):
-    usuario = UsuarioBaseSerializer()
+    usuario = UserSerializer()
 from core.models.paciente import Paciente
 
 from core.models.teste import Teste
@@ -22,7 +22,7 @@ class PacienteSerializer(serializers.ModelSerializer):
     
     def create(self, validated_data):
         usuario_data = validated_data.pop('usuario')
-        usuario_serializer = UsuarioBaseSerializer(data=usuario_data)
+        usuario_serializer = UserSerializer(data=usuario_data)
         usuario_serializer.is_valid(raise_exception=True)
         usuario = usuario_serializer.save()
   

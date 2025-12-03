@@ -8,6 +8,7 @@ from core.views.admin import AdministradorViewSet
 from core.views.paciente import PacienteViewSet
 from core.views.profissional import ProfissionalViewSet
 from core.views.teste import TesteViewSet
+from core.views.user import UsuarioViewSet
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -18,14 +19,13 @@ router.register(r'administradores', AdministradorViewSet)
 router.register(r'pacientes', PacienteViewSet)
 router.register(r'profissionais', ProfissionalViewSet)
 router.register(r'testes', TesteViewSet)
+router.register(r'usuarios', UsuarioViewSet)
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path('/', include(router.urls)),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("api/media/", include(uploader_router.urls)),
     path('auth/', include('core.urls_auth')),
 ] + router.urls

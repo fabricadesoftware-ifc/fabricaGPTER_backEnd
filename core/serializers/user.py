@@ -3,18 +3,22 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'nome', 'cpf', 'is_admin']
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password']
+        fields = ['id', 'username', 'email', 'password', 'nome', 'cpf']
 
     def create(self, validated_data):
-        user = User(
-            username=validated_data["username"],
-            email=validated_data.get("email", "")
-        )
-        user.set_password(validated_data["password"])
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
         user.save()
         return user
