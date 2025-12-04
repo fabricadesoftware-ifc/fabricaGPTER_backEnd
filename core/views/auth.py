@@ -1,5 +1,5 @@
 from rest_framework import generics
-from core.serializers.user import RegisterSerializer
+from core.serializers.user import RegisterSerializer, UserSerializer
 from django.contrib.auth import get_user_model
 
 from rest_framework.views import APIView
@@ -16,9 +16,5 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        user = request.user
-        return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email
-        })
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
