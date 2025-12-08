@@ -19,6 +19,8 @@ dependencies = [
     "python-magic>=0.4.27; sys_platform == \"linux\"",
     "python-magic-bin>=0.4.14; sys_platform == \"win32, darwin\"",
     "django-cloudinary-storage>=0.3.0",
+    "whitenoise>=6.11.0",
+    "django-cors-headers>=4.9.0",
 ]
 requires-python = ">=3.9"
 readme = "README.md"

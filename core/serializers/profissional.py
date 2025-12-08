@@ -1,10 +1,11 @@
 from rest_framework import serializers
 from core.models import Profissional, Paciente
-from .user import UserSerializer
+from .user import UserSerializer, RegisterSerializer
 from .paciente import PacienteSerializer
 
 class ProfissionalSerializer(serializers.ModelSerializer):
-    usuario = UserSerializer()
+    usuario = RegisterSerializer(write_only=True)
+    usuario_info = UserSerializer(source='usuario', read_only=True)
 
     pacientes_ids = serializers.PrimaryKeyRelatedField(
         many=True,
@@ -17,13 +18,13 @@ class ProfissionalSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profissional
-        fields = ['id', 'usuario', 'telefone', 'pacientes', 'pacientes_ids']
+        fields = ['id', 'usuario', 'usuario_info', 'telefone', 'pacientes', 'pacientes_ids']
 
     def create(self, validated_data):
         usuario_data = validated_data.pop('usuario')
         pacientes_data = validated_data.pop('pacientes', [])
 
-        usuario_serializer = UserSerializer(data=usuario_data)
+        usuario_serializer = RegisterSerializer(data=usuario_data)
         usuario_serializer.is_valid(raise_exception=True)
         usuario = usuario_serializer.save()
 
