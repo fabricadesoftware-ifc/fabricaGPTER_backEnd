@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,10 +42,12 @@ TEMPLATES = [{
 }]
 WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
-DATABASES = {'default': {
-    'ENGINE': 'django.db.backends.sqlite3',
-    'NAME': os.getenv('SQLITE_PATH', str(BASE_DIR / 'local.sqlite3')),
-}}
+DATABASES = {
+    'default': dj_database_url.config(
+        default=f"sqlite:///{os.getenv('SQLITE_PATH', str(BASE_DIR / 'local.sqlite3'))}",
+        conn_max_age=600,
+    )
+}
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
