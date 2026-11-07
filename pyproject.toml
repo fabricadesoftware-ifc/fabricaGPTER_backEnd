@@ -1,49 +1,20 @@
 [project]
-name = "fabricaGPTER_backEnd"
+name = "fabricagpter-backend"
 version = "0.1.0"
-description = "Default template for PDM package"
-authors = [
-    {name = "GuilhermeSchreiber7", email = "guilhermeschreieber2007@gmail.com"},
-    {name = "erickChavesFiamoncini", email = "erickechaves@gmail.com"},
-    {name = "", email = ""},
-]
+description = "Base da API do projeto Fábrica GPTER"
+requires-python = ">=3.14,<3.15"
 dependencies = [
-    "django>=4.2.26",
-    "django-extensions>=4.1",
-    "pydotplus>=2.0.2",
-    "python-dotenv>=1.1.0",
-    "netifaces>=0.11.0",
-    "djangorestframework>=3.16.0",
-    "djangorestframework-simplejwt>=5.5.1",
-    "Pillow>=11.3.0",
-    "python-magic>=0.4.27; sys_platform == \"linux\"",
-    "python-magic-bin>=0.4.14; sys_platform == \"win32, darwin\"",
-    "django-cloudinary-storage>=0.3.0",
-    "whitenoise>=6.11.0",
-    "django-cors-headers>=4.9.0",
+    "django>=5.2.8,<5.3",
+    "djangorestframework>=3.16,<3.17",
+    "django-cors-headers>=4.9,<5",
+    "python-dotenv>=1.1,<2",
 ]
-requires-python = ">=3.9"
-readme = "README.md"
-license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
 
-
 [tool.pdm.scripts]
-pre_dev = "python ./scripts/set_my_ip.py"
-dev = "python manage.py runserver 0.0.0.0:19003"
-createsuperuser = "python manage.py createsuperuser"
-pre_migrate = "python manage.py makemigrations"
-migrate = "python manage.py migrate"
-post_migrate = "python manage.py graph_models -S -g -o core.png core"
-shell = "python manage.py shell"
-shellp = "python manage.py shell_plus"
+dev = "python manage.py runserver 127.0.0.1:19003"
 test = "python manage.py test"
-loaddata = "python manage.py loaddata core.json"
-dumpdata = "python manage.py dumpdata --indent 2"
-cria_api = "python ./scripts/cria_api.py {args}"
-check = "ruff check"
-pre_format = "ruff check --fix"
-format = "ruff format"
-
+check = "python manage.py check"
+migrate = "python manage.py migrate"

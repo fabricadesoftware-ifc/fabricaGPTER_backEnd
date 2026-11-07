@@ -62,7 +62,10 @@ cover/
 # Django stuff:
 *.log
 local_settings.py
-# db.sqlite3
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
 db.sqlite3-journal
 
 # Flask stuff:
@@ -125,6 +128,7 @@ celerybeat.pid
 
 # Environments
 .env
+!.env.example
 .venv
 env/
 venv/
@@ -173,3 +177,6 @@ poetry.toml
 
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+media/
+staticfiles/
+*.tmp
