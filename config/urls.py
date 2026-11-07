@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -11,6 +11,7 @@ def health_check(request):
     return Response({'status': 'ok'})
 
 urlpatterns = [
+    path('api/auth/', include('accounts.urls')),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health-check'),
 ]
