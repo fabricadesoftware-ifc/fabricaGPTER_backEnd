@@ -11,6 +11,7 @@ def health_check(request):
     return Response({'status': 'ok'})
 
 urlpatterns = [
+    path('', health_check, name='root-health-check'),
     path('api/auth/', include('accounts.urls')),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health-check'),
