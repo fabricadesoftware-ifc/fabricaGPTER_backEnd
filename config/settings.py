@@ -1,4 +1,5 @@
 """Configuração inicial do projeto Fábrica GPTER."""
+import json
 import os
 from pathlib import Path
 
@@ -109,3 +110,22 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'accounts.errors.exception_handler',
     'DEFAULT_THROTTLE_RATES': {'login': os.getenv('LOGIN_THROTTLE_RATE', '10/min')},
 }
+
+
+def env_json_list(name, default='[]'):
+    raw = os.getenv(name, default) or default
+    try:
+        value = json.loads(raw)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f'{name} deve conter JSON válido.') from exc
+    if not isinstance(value, list):
+        raise ImproperlyConfigured(f'{name} deve conter uma lista JSON.')
+    return value
+
+
+# Conteúdo institucional. Vazio significa que o frontend deve exibir estado vazio.
+GPTER_SUPPORT_EMAIL = os.getenv('GPTER_SUPPORT_EMAIL', '').strip()
+GPTER_SUPPORT_PHONE = os.getenv('GPTER_SUPPORT_PHONE', '').strip()
+GPTER_TERMS_UPDATED_AT = os.getenv('GPTER_TERMS_UPDATED_AT', '').strip()
+GPTER_TERMS_VERSION = os.getenv('GPTER_TERMS_VERSION', '').strip()
+GPTER_TERMS_SECTIONS = env_json_list('GPTER_TERMS_SECTIONS')
