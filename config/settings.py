@@ -19,8 +19,14 @@ debug_value = os.getenv('DJANGO_DEBUG', 'false').strip().lower()
 if debug_value not in ('true', 'false'):
     raise ImproperlyConfigured('DJANGO_DEBUG deve ser true ou false.')
 DEBUG = debug_value == 'true'
-ALLOWED_HOSTS = env_list('ALLOWED_HOSTS', 'localhost,127.0.0.1')
-CORS_ALLOWED_ORIGINS = env_list('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')
+ALLOWED_HOSTS = env_list(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1,gpter-server.class.fabricadesoftware.ifc.edu.br',
+)
+CORS_ALLOWED_ORIGINS = env_list(
+    'CORS_ALLOWED_ORIGINS',
+    'http://localhost:5173,https://gpter.class.fabricadesoftware.ifc.edu.br',
+)
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
     'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles',
@@ -71,7 +77,10 @@ def env_bool(name, default):
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_EXPOSE_HEADERS = ['Retry-After', 'WWW-Authenticate']
-CSRF_TRUSTED_ORIGINS = env_list('CSRF_TRUSTED_ORIGINS', 'http://localhost:5173')
+CSRF_TRUSTED_ORIGINS = env_list(
+    'CSRF_TRUSTED_ORIGINS',
+    'http://localhost:5173,https://gpter.class.fabricadesoftware.ifc.edu.br',
+)
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
@@ -91,6 +100,7 @@ if SESSION_COOKIE_AGE <= 0:
 SESSION_SAVE_EVERY_REQUEST = False
 CSRF_FAILURE_VIEW = 'accounts.errors.csrf_failure'
 SECURE_SSL_REDIRECT = env_bool('SECURE_SSL_REDIRECT', not DEBUG)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '0'))
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['accounts.authentication.SessionAuthentication'],
