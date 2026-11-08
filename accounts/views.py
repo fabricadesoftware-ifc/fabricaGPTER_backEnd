@@ -1,7 +1,11 @@
 from datetime import timedelta
+
 from django.conf import settings
-from django.contrib.auth import authenticate, login, logout
-from django.middleware.csrf import get_token
+from django.contrib.auth import (authenticate, login, logout,
+                                 update_session_auth_hash)
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.middleware.csrf import get_token, rotate_token
 from django.utils.decorators import method_decorator
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_protect
@@ -14,6 +18,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
+
+from .errors import FieldValidationError
 from .models import AccessProfile
 
 
@@ -101,3 +107,52 @@ class LogoutView(AuthView):
     def post(self, request):
         logout(request)
         return Response(status=204)
+
+
+class ChangePasswordInput(serializers.Serializer):
+    current_password = serializers.CharField(max_length=4096, trim_whitespace=False,
+                                             write_only=True)
+    new_password = serializers.CharField(max_length=4096, trim_whitespace=False,
+                                         write_only=True)
+    confirmation = serializers.CharField(max_length=4096, trim_whitespace=False,
+                                         write_only=True)
+
+    def validate_current_password(self, value):
+        if not self.context['user'].check_password(value):
+            raise serializers.ValidationError('A senha atual está incorreta.')
+        return value
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['confirmation']:
+            raise serializers.ValidationError(
+                {'confirmation': ['A confirmação não confere com a nova senha.']})
+        if attrs['new_password'] == attrs['current_password']:
+            raise serializers.ValidationError(
+                {'new_password': ['A nova senha deve ser diferente da senha atual.']})
+        try:
+            validate_password(attrs['new_password'], user=self.context['user'])
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {'new_password': list(exc.messages)}) from None
+        return attrs
+
+
+@method_decorator(never_cache, name='dispatch')
+@method_decorator(sensitive_post_parameters(
+    'current_password', 'new_password', 'confirmation'), name='dispatch')
+class ChangePasswordView(AuthView):
+    def post(self, request):
+        serializer = ChangePasswordInput(data=request.data, context={'user': request.user})
+        if not serializer.is_valid():
+            raise FieldValidationError(serializer.errors)
+        user = request.user
+        user.set_password(serializer.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        # Keep this session valid; every other session is invalidated by the
+        # password hash stored in Django's session authentication data.
+        update_session_auth_hash(request, user)
+        rotate_token(request)
+        return Response({
+            'detail': 'Senha alterada com sucesso.',
+            'csrf_token': get_token(request),
+        })
