@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.errors import ConflictError, FieldValidationError
-from accounts.models import AccessProfile
+from accounts.models import AccessProfile, ProfessionalProfile
 
 from .models import Patient
 from .pagination import PatientPagination
@@ -146,6 +146,11 @@ class ProfileView(APIView):
                 'photo': None,
             })
 
+        try:
+            professional_profile = user.professional_profile
+        except ProfessionalProfile.DoesNotExist:
+            professional_profile = None
+
         return Response({
             'id': user.pk,
             'profileId': access_profile.pk,
@@ -153,13 +158,11 @@ class ProfileView(APIView):
             'username': user.get_username(),
             'name': user.get_full_name().strip() or user.get_username(),
             'email': user.email or None,
-            'phone': getattr(getattr(user, 'professional_profile', None), 'phone', None),
+            'phone': professional_profile.phone if professional_profile else None,
             'birthDate': (
-                getattr(getattr(user, 'professional_profile', None), 'birth_date', None)
-                .isoformat()
-                if getattr(getattr(user, 'professional_profile', None), 'birth_date', None)
-                else None
+                professional_profile.birth_date.isoformat()
+                if professional_profile and professional_profile.birth_date else None
             ),
-            'cpf': getattr(getattr(user, 'professional_profile', None), 'cpf', None),
-            'photo': getattr(getattr(user, 'professional_profile', None), 'photo', None),
+            'cpf': professional_profile.cpf if professional_profile else None,
+            'photo': professional_profile.photo if professional_profile else None,
         })
