@@ -19,11 +19,23 @@ from .models import AccessProfile
 
 def user_data(user):
     try:
-        role = user.access_profile.role
+        access_profile = user.access_profile
     except AccessProfile.DoesNotExist:
-        role = None
-    return {'id': user.pk, 'username': user.get_username(),
-            'display_name': user.get_full_name().strip() or user.get_username(), 'profile': role}
+        access_profile = None
+    role = access_profile.role if access_profile else None
+    profile_id = None
+    if role == AccessProfile.Role.PATIENT:
+        patient = getattr(user, 'patient', None)
+        profile_id = patient.pk if patient is not None else None
+    elif role == AccessProfile.Role.PROFESSIONAL:
+        profile_id = access_profile.pk
+    return {
+        'id': user.pk,
+        'username': user.get_username(),
+        'display_name': user.get_full_name().strip() or user.get_username(),
+        'profile': role,
+        'profileId': profile_id,
+    }
 
 
 class InvalidCredentials(AuthenticationFailed):

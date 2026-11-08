@@ -10,9 +10,13 @@ from rest_framework.response import Response
 def health_check(request):
     return Response({'status': 'ok'})
 
+handler404 = 'accounts.errors.not_found'
+handler500 = 'accounts.errors.server_error'
+
 urlpatterns = [
     path('', health_check, name='root-health-check'),
     path('api/auth/', include('accounts.urls')),
+    path('api/', include('patients.urls')),
     path('admin/', admin.site.urls),
     path('api/health/', health_check, name='health-check'),
 ]
