@@ -41,11 +41,14 @@ class AuthenticationTests(TestCase):
         self.assertEqual(set(response.json()), {'error'})
 
     def test_login_and_me_for_both_profiles(self):
+        profile_ids = {'patient': None,
+                       'professional': self.professional.access_profile.pk}
         for username, role, name in [('patient', 'paciente', 'Ana'), ('professional', 'profissional', 'professional')]:
             response = self.login(username)
             self.assertEqual(response.status_code, 200)
             expected = {'id': get_user_model().objects.get(username=username).pk,
-                        'username': username, 'display_name': name, 'profile': role}
+                        'username': username, 'display_name': name, 'profile': role,
+                        'profileId': profile_ids[username]}
             self.assertEqual(response.json()['user'], expected)
             self.assertEqual(self.client.get('/api/auth/me/').json(), {'user': expected})
             self.assertTrue(response.cookies['sessionid']['httponly'])
