@@ -432,3 +432,26 @@ class PatientUpdateAndDeleteTests(PatientApiTestCase):
         response = self.client.delete(f'/api/patients/{self.patient.pk}/',
                                       HTTP_ORIGIN=ORIGIN)
         self.assert_error(response, 403, 'csrf_failed')
+
+
+@override_settings(**CSRF_SETTINGS)
+class AssessmentTests(PatientApiTestCase):
+    def test_assessment_lifecycle(self):
+        self.login()
+        url = f'/api/patients/{self.patient.pk}/assessments/'
+        headers = dict(format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
+        created = self.client.post(url, {}, **headers)
+        self.assertEqual(created.status_code, 201, created.content)
+        detail = f"{url}{created.json()['id']}/"
+        self.assertEqual(created.json()['observations'], '')
+        changed = self.client.patch(detail, {'observations': 'Boa amplitude'}, **headers)
+        self.assertEqual(changed.status_code, 200)
+        self.assertEqual(self.client.get(detail).json()['observations'], 'Boa amplitude')
+        self.assertEqual(self.client.get(url).json()['results'], [changed.json()])
+        invalid_text = self.client.patch(detail, {'observations': 10}, **headers)
+        self.assertEqual(invalid_text.status_code, 400)
+        invalid = self.client.patch(detail, {'repetitions': 5}, **headers)
+        self.assertEqual(invalid.status_code, 400)
+        other = f'/api/patients/{self.other_patient.pk}/assessments/'
+        self.assertEqual(self.client.post(other, {}, **headers).status_code, 404)
+        self.assertEqual(self.client.get(f"{other}{created.json()['id']}/").status_code, 404)

@@ -59,3 +59,8 @@ class Patient(models.Model):
         cep = f'{self.cep[:5]}-{self.cep[5:]}' if len(self.cep) == 8 else self.cep
         return (f'{self.street}, {self.number} - {self.neighborhood}, '
                 f'{self.city} - {self.state}, CEP {cep}')
+
+
+class Assessment(models.Model):
+    patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='assessments')
+    observations = models.TextField(blank=True, default='')

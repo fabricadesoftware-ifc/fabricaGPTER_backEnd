@@ -2,7 +2,7 @@ from django.db import IntegrityError
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.debug import sensitive_post_parameters
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import JSONParser
 from rest_framework.permissions import IsAuthenticated
@@ -15,7 +15,7 @@ from accounts.models import AccessProfile, ProfessionalProfile
 from .models import Patient
 from .pagination import PatientPagination
 from .permissions import IsProfessional
-from .serializers import (PatientCreateSerializer, PatientUpdateSerializer,
+from .serializers import (AssessmentSerializer, PatientCreateSerializer, PatientUpdateSerializer,
                           patient_data)
 from .services import create_patient_account, deactivate_patient, update_patient
 
@@ -168,3 +168,45 @@ class ProfileView(APIView):
             'cpf': professional_profile.cpf if professional_profile else None,
             'photo': professional_profile.photo if professional_profile else None,
         })
+
+
+class AssessmentView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated, IsProfessional]
+    parser_classes = [JSONParser]
+    serializer_class = AssessmentSerializer
+
+    def get_patient(self):
+        return get_object_or_404(Patient, pk=self.kwargs['patient_id'],
+                                 professional=self.request.user)
+
+    def save_assessment(self, serializer, **kwargs):
+        if not serializer.is_valid():
+            raise FieldValidationError(serializer.errors)
+        serializer.save(**kwargs)
+
+
+class AssessmentListView(AssessmentView):
+    pagination_class = PatientPagination
+
+    def get(self, request, patient_id):
+        page = self.paginate_queryset(self.get_patient().assessments.order_by('-pk'))
+        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+
+    def post(self, request, patient_id):
+        patient = self.get_patient()
+        serializer = self.get_serializer(data=request.data)
+        self.save_assessment(serializer, patient=patient)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AssessmentDetailView(AssessmentView):
+    def get_object(self):
+        return get_object_or_404(self.get_patient().assessments, pk=self.kwargs['pk'])
+
+    def get(self, request, patient_id, pk):
+        return Response(self.get_serializer(self.get_object()).data)
+
+    def patch(self, request, patient_id, pk):
+        serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
+        self.save_assessment(serializer)
+        return Response(serializer.data)

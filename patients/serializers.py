@@ -6,7 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
-from .models import Patient
+from .models import Assessment, Patient
 from .validators import normalize_cep, normalize_cpf, normalize_state
 
 User = get_user_model()
@@ -241,3 +241,20 @@ class PatientUpdateSerializer(serializers.Serializer):
         attrs.pop('password', None)
         attrs.pop('confirmation', None)
         return attrs
+
+
+class AssessmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assessment
+        fields = ('id', 'observations')
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            if 'observations' in data and not isinstance(data['observations'], str):
+                raise serializers.ValidationError({'observations': ['Informe um texto.']})
+            unknown = data.keys() - {'observations'}
+            if unknown:
+                raise serializers.ValidationError({
+                    field: ['Campo desconhecido.'] for field in unknown
+                })
+        return super().to_internal_value(data)
