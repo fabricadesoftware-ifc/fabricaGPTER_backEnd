@@ -64,3 +64,13 @@ class Patient(models.Model):
 class Assessment(models.Model):
     patient = models.ForeignKey(Patient, on_delete=models.PROTECT, related_name='assessments')
     observations = models.TextField(blank=True, default='')
+
+    # A test is uploaded and retrieved as one ordered series.
+    measurements = models.JSONField(default=list, blank=True)
+    seconds = models.PositiveSmallIntegerField(choices=[(n, str(n)) for n in (30, 60, 120)], null=True)
+    arm = models.CharField(max_length=8, choices=Patient.DominantHand.choices, blank=True)
+    status = models.CharField(max_length=9, null=True, default='running', choices=[
+        ('running', 'Em andamento'), ('finished', 'Finalizado'),
+        ('validated', 'Validado'), ('cancelled', 'Cancelado'),
+    ])
+    date = models.DateField(null=True, editable=False)
