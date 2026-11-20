@@ -1,10 +1,15 @@
+import sys
 import re
 from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
+from django.utils import timezone
 from rest_framework import serializers
+
+from accounts.errors import ConflictError
 
 from .models import Assessment, Patient
 from .validators import normalize_cep, normalize_cpf, normalize_state
@@ -243,18 +248,56 @@ class PatientUpdateSerializer(serializers.Serializer):
         return attrs
 
 
-class AssessmentSerializer(serializers.ModelSerializer):
+class AssessmentSummarySerializer(serializers.ModelSerializer):
     class Meta:
         model = Assessment
-        fields = ('id', 'observations')
+        fields = ('id', 'patient', 'arm', 'seconds', 'date', 'status', 'observations')
+        read_only_fields = ('patient',)
+
+
+class AssessmentSerializer(AssessmentSummarySerializer):
+    status = serializers.ChoiceField(choices=Assessment._meta.get_field('status').choices, required=False)
+
+    class Meta(AssessmentSummarySerializer.Meta):
+        fields = AssessmentSummarySerializer.Meta.fields + ('measurements',)
 
     def to_internal_value(self, data):
         if isinstance(data, dict):
             if 'observations' in data and not isinstance(data['observations'], str):
                 raise serializers.ValidationError({'observations': ['Informe um texto.']})
-            unknown = data.keys() - {'observations'}
+            allowed = {'observations', 'status', 'measurements'}
+            if self.instance is None:
+                allowed.update(('arm', 'seconds'))
+            unknown = data.keys() - allowed
             if unknown:
-                raise serializers.ValidationError({
-                    field: ['Campo desconhecido.'] for field in unknown
-                })
+                raise serializers.ValidationError({field: ['Campo desconhecido.'] for field in unknown})
         return super().to_internal_value(data)
+
+    def validate_measurements(self, samples):
+        if not isinstance(samples, list) or not samples:
+            raise serializers.ValidationError('Envie uma lista de amostras com tempo e força.')
+        previous = -1
+        for index, sample in enumerate(samples):
+            if not isinstance(sample, dict) or sample.keys() != {'t', 'f'}:
+                raise serializers.ValidationError(f'Amostra {index}: informe t e f.')
+            for value in sample.values():
+                if type(value) not in (float, int) or not -sys.float_info.max <= value <= sys.float_info.max:
+                    raise serializers.ValidationError(f'Amostra {index}: use números finitos.')
+            t = float(sample['t'])
+            if t < 0 or t <= previous:
+                raise serializers.ValidationError(f'Amostra {index}: o tempo deve ser não negativo e crescente.')
+            previous = t
+        return [{'t': float(sample['t']), 'f': float(sample['f'])} for sample in samples]
+
+    def create(self, validated_data):
+        return Assessment.objects.create(date=timezone.localdate(), **validated_data)
+
+    def update(self, instance, validated_data):
+        query = Assessment.objects.filter(pk=instance.pk)
+        if 'measurements' in validated_data:
+            # Permit an identical retry while protecting a previously saved recording.
+            query = query.filter(Q(measurements=[]) | Q(measurements=validated_data['measurements']))
+        if validated_data and not query.update(**validated_data):
+            raise ConflictError('Esta avaliação já possui outra série de medições.')
+        instance.refresh_from_db()
+        return instance

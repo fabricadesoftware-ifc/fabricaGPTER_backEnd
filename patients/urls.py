@@ -5,6 +5,8 @@ from .views import (AssessmentDetailView, AssessmentListView, PatientDetailView,
 
 app_name = 'patients'
 urlpatterns = [
+    path('assessments/', AssessmentListView.as_view(), name='assessments'),
+    path('assessments/<int:pk>/', AssessmentDetailView.as_view(), name='assessment'),
     path('patients/', PatientListView.as_view(), name='patient-list'),
     path('patients/<int:pk>/', PatientDetailView.as_view(), name='patient-detail'),
     path('patients/<int:patient_id>/assessments/', AssessmentListView.as_view(),

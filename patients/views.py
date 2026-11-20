@@ -12,10 +12,10 @@ from rest_framework.views import APIView
 from accounts.errors import ConflictError, FieldValidationError
 from accounts.models import AccessProfile, ProfessionalProfile
 
-from .models import Patient
+from .models import Assessment, Patient
 from .pagination import PatientPagination
 from .permissions import IsProfessional
-from .serializers import (AssessmentSerializer, PatientCreateSerializer, PatientUpdateSerializer,
+from .serializers import (AssessmentSerializer, AssessmentSummarySerializer, PatientCreateSerializer, PatientUpdateSerializer,
                           patient_data)
 from .services import create_patient_account, deactivate_patient, update_patient
 
@@ -175,9 +175,12 @@ class AssessmentView(generics.GenericAPIView):
     parser_classes = [JSONParser]
     serializer_class = AssessmentSerializer
 
-    def get_patient(self):
-        return get_object_or_404(Patient, pk=self.kwargs['patient_id'],
-                                 professional=self.request.user)
+    def get_patient(self, patient_id):
+        value = str(patient_id)
+        if not (value.isascii() and value.isdecimal() and len(value) <= 19
+                and 0 < int(value) <= 2**63 - 1):
+            raise FieldValidationError({'patient': ['Informe o identificador do paciente.']})
+        return get_object_or_404(Patient, pk=int(patient_id), professional=self.request.user)
 
     def save_assessment(self, serializer, **kwargs):
         if not serializer.is_valid():
@@ -188,25 +191,35 @@ class AssessmentView(generics.GenericAPIView):
 class AssessmentListView(AssessmentView):
     pagination_class = PatientPagination
 
-    def get(self, request, patient_id):
-        page = self.paginate_queryset(self.get_patient().assessments.order_by('-pk'))
-        return self.get_paginated_response(self.get_serializer(page, many=True).data)
+    def get(self, request, patient_id=None):
+        patient = self.get_patient(patient_id if patient_id is not None else request.query_params.get('patient'))
+        page = self.paginate_queryset(patient.assessments.defer('measurements').order_by('-pk'))
+        return self.get_paginated_response(AssessmentSummarySerializer(page, many=True).data)
 
-    def post(self, request, patient_id):
-        patient = self.get_patient()
-        serializer = self.get_serializer(data=request.data)
+    def post(self, request, patient_id=None):
+        data = request.data
+        if patient_id is None:
+            if not isinstance(data, dict):
+                raise FieldValidationError({'patient': ['Informe o paciente.']})
+            data = data.copy()
+            patient_id = data.pop('patient', None)
+        patient = self.get_patient(patient_id)
+        serializer = self.get_serializer(data=data)
         self.save_assessment(serializer, patient=patient)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class AssessmentDetailView(AssessmentView):
     def get_object(self):
-        return get_object_or_404(self.get_patient().assessments, pk=self.kwargs['pk'])
+        queryset = Assessment.objects.filter(patient__professional=self.request.user)
+        if 'patient_id' in self.kwargs:
+            queryset = queryset.filter(patient_id=self.kwargs['patient_id'])
+        return get_object_or_404(queryset, pk=self.kwargs['pk'])
 
-    def get(self, request, patient_id, pk):
+    def get(self, request, pk, patient_id=None):
         return Response(self.get_serializer(self.get_object()).data)
 
-    def patch(self, request, patient_id, pk):
+    def patch(self, request, pk, patient_id=None):
         serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
         self.save_assessment(serializer)
         return Response(serializer.data)

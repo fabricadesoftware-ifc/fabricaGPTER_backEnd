@@ -447,7 +447,9 @@ class AssessmentTests(PatientApiTestCase):
         changed = self.client.patch(detail, {'observations': 'Boa amplitude'}, **headers)
         self.assertEqual(changed.status_code, 200)
         self.assertEqual(self.client.get(detail).json()['observations'], 'Boa amplitude')
-        self.assertEqual(self.client.get(url).json()['results'], [changed.json()])
+        summary = changed.json()
+        del summary['measurements']
+        self.assertEqual(self.client.get(url).json()['results'], [summary])
         invalid_text = self.client.patch(detail, {'observations': 10}, **headers)
         self.assertEqual(invalid_text.status_code, 400)
         invalid = self.client.patch(detail, {'repetitions': 5}, **headers)
@@ -455,3 +457,49 @@ class AssessmentTests(PatientApiTestCase):
         other = f'/api/patients/{self.other_patient.pk}/assessments/'
         self.assertEqual(self.client.post(other, {}, **headers).status_code, 404)
         self.assertEqual(self.client.get(f"{other}{created.json()['id']}/").status_code, 404)
+
+    def test_vue_recording_round_trip_and_retry(self):
+        self.login()
+        headers = dict(format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
+        url = '/api/assessments/'
+        form = {'patient': str(self.patient.pk), 'arm': 'Direita', 'seconds': 30}
+        created = self.client.post(url, form, **headers)
+        self.assertEqual(created.status_code, 201, created.content)
+        pk = created.json()['id']
+        detail = f'{url}{pk}/'
+        samples = [{'t': 0, 'f': -0.1}, {'t': 0.025, 'f': 12.75}]
+        body = {'status': 'finished', 'measurements': samples}
+        for _ in range(2):
+            self.assertEqual(self.client.patch(detail, body, **headers).status_code, 200)
+        conflict = self.client.patch(detail, {'measurements': [{'t': 0, 'f': 99}]}, **headers)
+        self.assertEqual(conflict.status_code, 409)
+        self.client.patch(detail, {'observations': 'Revisado'}, **headers)
+        result = self.client.get(f'/api/patients/{self.patient.pk}/assessments/{pk}/').json()
+        self.assertEqual(result['measurements'], samples)
+        self.assertEqual(result['status'], 'finished')
+        self.assertEqual(result['patient'], self.patient.pk)
+        summary = self.client.get(url, {'patient': self.patient.pk}).json()['results'][0]
+        self.assertNotIn('measurements', summary)
+        self.assertEqual(summary['id'], pk)
+        self.login('other-professional')
+        self.assertEqual(self.client.get(detail).status_code, 404)
+        headers['HTTP_X_CSRFTOKEN'] = self.token
+        self.assertEqual(self.client.patch(detail, body, **headers).status_code, 404)
+
+    def test_invalid_series_does_not_partially_finish_test(self):
+        self.login()
+        headers = dict(format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
+        url = f'/api/patients/{self.patient.pk}/assessments/'
+        pk = self.client.post(url, {}, **headers).json()['id']
+        detail = f'{url}{pk}/'
+        first = {'t': 1, 'f': 3}
+        for samples in (None, [], {}, [first, first], [first, {'t': 0, 'f': 3}],
+                        [{'t': -1, 'f': 2}], [{'t': 0}], [{'t': False, 'f': 1}],
+                        [{'t': 0, 'f': '12'}], [{'t': 0, 'f': 10**400}]):
+            with self.subTest(samples=samples):
+                response = self.client.patch(detail, {'status': 'finished', 'measurements': samples}, **headers)
+                self.assertEqual(response.status_code, 400, response.content)
+                self.assertIn('measurements', response.json()['error']['fields'])
+        result = self.client.get(detail).json()
+        self.assertEqual(result['measurements'], [])
+        self.assertEqual(result['status'], 'running')
