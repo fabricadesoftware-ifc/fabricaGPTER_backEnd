@@ -11,7 +11,7 @@ User = get_user_model()
 
 PATIENT_FIELDS = (
     'name', 'email', 'cpf', 'cep', 'street', 'city', 'state', 'neighborhood',
-    'number', 'phone', 'photo',
+    'number', 'phone', 'photo', 'dominant_hand',
 )
 
 
@@ -27,6 +27,7 @@ def create_patient_account(*, professional, data):
             user=user,
             professional=professional,
             name=data['name'],
+            dominant_hand=data['dominant_hand'],
             email=data['email'],
             cpf=data['cpf'],
             cep=data['cep'],

@@ -135,6 +135,7 @@ class PatientPermissionTests(PatientApiTestCase):
             'email': 'ana@example.com',
             'phone': '(47) 98888-2222',
             'birthDate': '1992-04-05',
+            'dominantHand': None,
             'cpf': self.patient.cpf,
             'photo': 'https://example.org/paciente.jpg',
         })
@@ -172,6 +173,7 @@ class PatientCreateTests(PatientApiTestCase):
             'state': 'df',
             'neighborhood': 'Centro',
             'number': '42',
+            'dominantHand': 'Direita',
         }
         data.update(overrides)
         return data
@@ -181,6 +183,7 @@ class PatientCreateTests(PatientApiTestCase):
         response = self.post_patient(self.payload())
         self.assertEqual(response.status_code, 201, response.content)
         data = response.json()
+        self.assertEqual(data['dominantHand'], 'Direita')
         self.assertEqual(data['username'], 'novo-paciente')
         self.assertEqual(data['name'], 'Novo Paciente')
         self.assertEqual(data['cpf'], '52998224725')
@@ -207,6 +210,15 @@ class PatientCreateTests(PatientApiTestCase):
         self.assertEqual(me['username'], 'novo-paciente')
         self.assertEqual(me['profile'], 'paciente')
         self.assertEqual(me['profileId'], patient.pk)
+
+    def test_dominant_hand_required_on_create(self):
+        self.login()
+        missing = self.payload()
+        del missing['dominantHand']
+        for payload in (missing, self.payload(dominantHand=None), self.payload(dominantHand='Outra')):
+            response = self.post_patient(payload)
+            self.assertEqual(response.status_code, 400)
+            self.assertIn('dominantHand', response.json()['error']['fields'])
 
     def test_duplicate_username_cpf_and_email(self):
         self.login()
@@ -310,6 +322,7 @@ class PatientListAndDetailTests(PatientApiTestCase):
         self.login()
         response = self.client.get(f'/api/patients/{self.bruno.pk}/')
         self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json()['dominantHand'])
         self.assertEqual(response.json()['username'], 'bruno')
 
     def test_invalid_query_parameters_and_not_found_are_json(self):
@@ -336,7 +349,7 @@ class PatientUpdateAndDeleteTests(PatientApiTestCase):
         self.login()
         response = self.client.patch(
             f'/api/patients/{self.patient.pk}/',
-            {'name': 'Ana Atualizada', 'phone': '(61) 99999-0000',
+            {'dominantHand': 'Esquerda', 'name': 'Ana Atualizada', 'phone': '(61) 99999-0000',
              'birthDate': '1990-02-03', 'password': '', 'confirmation': ''},
             format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
         self.assertEqual(response.status_code, 200, response.content)
@@ -346,6 +359,7 @@ class PatientUpdateAndDeleteTests(PatientApiTestCase):
         self.assertEqual(data['birthDate'], '1990-02-03')
         self.patient.refresh_from_db()
         self.patient.user.refresh_from_db()
+        self.assertEqual(self.patient.dominant_hand, 'Esquerda')
         self.assertEqual(self.patient.user.first_name, 'Ana Atualizada')
         self.assertTrue(self.patient.user.check_password(PASSWORD))
 

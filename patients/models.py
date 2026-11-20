@@ -4,6 +4,10 @@ from django.db.models.functions import Lower
 
 
 class Patient(models.Model):
+    class DominantHand(models.TextChoices):
+        RIGHT = 'Direita', 'Direita'
+        LEFT = 'Esquerda', 'Esquerda'
+
     class Status(models.TextChoices):
         ACTIVE = 'ativo', 'Ativo'
         INACTIVE = 'inativo', 'Inativo'
@@ -21,6 +25,7 @@ class Patient(models.Model):
     state = models.CharField(max_length=2)
     neighborhood = models.CharField(max_length=255)
     number = models.CharField(max_length=20)
+    dominant_hand = models.CharField(max_length=8, choices=DominantHand.choices, null=True)
     phone = models.CharField(max_length=20, null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
     photo = models.CharField(max_length=500, null=True, blank=True)
@@ -31,6 +36,11 @@ class Patient(models.Model):
     class Meta:
         ordering = ('name', 'id')
         constraints = [
+            models.CheckConstraint(
+                condition=(models.Q(dominant_hand__in=['Direita', 'Esquerda'])
+                           | models.Q(dominant_hand__isnull=True)),
+                name='patients_valid_dominant_hand',
+            ),
             models.CheckConstraint(
                 condition=models.Q(status__in=['ativo', 'inativo']),
                 name='patients_valid_status',

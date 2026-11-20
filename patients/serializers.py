@@ -21,6 +21,7 @@ def patient_data(patient):
         'name': patient.name,
         'email': patient.email,
         'cpf': patient.cpf,
+        'dominantHand': patient.dominant_hand,
         'cep': patient.cep,
         'street': patient.street,
         'city': patient.city,
@@ -117,6 +118,7 @@ def _validate_password_value(value, attrs, confirmation):
 
 
 class PatientCreateSerializer(serializers.Serializer):
+    dominantHand = serializers.ChoiceField(source='dominant_hand', choices=Patient.DominantHand.choices)
     username = serializers.CharField(max_length=150)
     password = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
     confirmation = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
@@ -173,6 +175,7 @@ class PatientCreateSerializer(serializers.Serializer):
 
 
 class PatientUpdateSerializer(serializers.Serializer):
+    dominantHand = serializers.ChoiceField(source='dominant_hand', choices=Patient.DominantHand.choices, required=False)
     username = serializers.CharField(max_length=150, required=False)
     password = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True,
                                      required=False, allow_blank=True, allow_null=True)
