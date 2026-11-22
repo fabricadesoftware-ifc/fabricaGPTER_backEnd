@@ -45,6 +45,12 @@
       <label>Cidade<input name="city" autocomplete="address-level2" maxlength="255" required></label>
       <label>UF<input name="state" autocomplete="address-level1" maxlength="2" required></label>
     </fieldset>
+    <fieldset>
+      <legend>Acesso ao sistema</legend>
+      <label>Usuário<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="150" required></label>
+      <label>Senha<input type="password" name="password" autocomplete="new-password" maxlength="4096" required></label>
+      <label>Confirmar senha<input type="password" name="confirmation" autocomplete="new-password" maxlength="4096" required></label>
+    </fieldset>
     <button type="submit">Enviar cadastro</button>
   </form>
   <p id="message" role="status" tabindex="-1"></p>
@@ -67,7 +73,7 @@
       if (response.status === 201) {
         form.reset();
         form.hidden = true;
-        message.textContent = 'Cadastro realizado com sucesso.';
+        message.textContent = 'Cadastro realizado. Você já pode entrar com seu usuário e sua senha.';
       } else {
         const {error} = await response.json();
         const details = Object.entries(error.fields || {}).map(([name, errors]) => {

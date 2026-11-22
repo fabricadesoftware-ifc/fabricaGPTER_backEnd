@@ -1,4 +1,4 @@
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
@@ -19,8 +19,8 @@ from .models import Assessment, Patient
 from .pagination import PatientPagination
 from .permissions import IsProfessional
 from .serializers import (AssessmentSerializer, AssessmentSummarySerializer, PatientCreateSerializer,
-                          PatientRegistrationSerializer, PatientUpdateSerializer, patient_data)
-from .services import create_patient_account, create_patient_record, deactivate_patient, update_patient
+                          PatientUpdateSerializer, patient_data)
+from .services import create_patient_account, deactivate_patient, update_patient
 
 ORDERING_FIELDS = {'name', 'status', 'created_at', 'updated_at'}
 
@@ -34,6 +34,7 @@ class RegistrationThrottle(SimpleRateThrottle):
 
 
 @method_decorator(never_cache, name='dispatch')
+@method_decorator(sensitive_post_parameters('password', 'confirmation'), name='dispatch')
 class PublicPatientRegistrationView(APIView):
     authentication_classes = []
     permission_classes = [AllowAny]
@@ -41,15 +42,14 @@ class PublicPatientRegistrationView(APIView):
     throttle_classes = [RegistrationThrottle]
 
     def post(self, request):
-        serializer = PatientRegistrationSerializer(data=request.data)
+        serializer = PatientCreateSerializer(data=request.data)
         if not serializer.is_valid():
-            for field in ('cpf', 'email'):
+            for field in ('cpf', 'email', 'username'):
                 if any(error.code == 'unique' for error in serializer.errors.get(field, [])):
                     raise ConflictError()
             raise FieldValidationError(serializer.errors)
         try:
-            with transaction.atomic():
-                create_patient_record(serializer.validated_data)
+            create_patient_account(professional=None, data=serializer.validated_data)
         except IntegrityError:
             raise ConflictError() from None
         return Response(status=status.HTTP_201_CREATED)
@@ -57,7 +57,7 @@ class PublicPatientRegistrationView(APIView):
 
 def readable_patients(professional):
     return Patient.objects.select_related('user').filter(
-        Q(professional=professional) | Q(professional__isnull=True, user__isnull=True))
+        Q(professional=professional) | Q(professional__isnull=True))
 
 
 @method_decorator(sensitive_post_parameters('password', 'confirmation'), name='dispatch')
