@@ -62,7 +62,7 @@ def _validate_username(value, *, user_id=None):
     if user_id is not None:
         query = query.exclude(pk=user_id)
     if query.exists():
-        raise serializers.ValidationError('Este usuário já está cadastrado.')
+        raise serializers.ValidationError('Este usuário já está cadastrado.', code='unique')
     return value
 
 
