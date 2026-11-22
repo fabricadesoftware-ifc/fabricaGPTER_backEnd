@@ -1,5 +1,15 @@
 # Template de projeto Django com DRF e PDM
 
+## Autocadastro de pacientes
+
+O QR Code deve apontar para `/cadastro/paciente/` no domínio HTTPS do backend. O formulário explica quem poderá consultar os dados e envia JSON para `POST /api/patients/register/`. A implantação requer a migração `patients.0005_allow_independent_registration`.
+
+São obrigatórios `name`, `email`, `cpf`, `dominantHand` (Direita ou Esquerda), `cep`, `street`, `number`, `neighborhood`, `city` e `state`. O sucesso retorna HTTP 201 com corpo vazio. Campos inválidos retornam 400. Conflitos de CPF ou e-mail retornam 409 com uma mensagem genérica.
+
+Profissionais autenticados encontram o paciente em `GET /api/patients/` e `GET /api/patients/<id>/`, com `username` nulo. Os pacientes já vinculados continuam visíveis apenas ao profissional responsável nesses endpoints.
+
+`PATIENT_REGISTRATION_THROTTLE_RATE` controla as tentativas por endereço de conexão (padrão `10/hour`). Ao exceder o limite, a API retorna 429 e o cabeçalho `Retry-After`. Com o cache local padrão, o limite vale por processo. Atrás de um proxy, conexões pelo mesmo endereço compartilham a cota.
+
 Esse é um template de projeto Django com DRF, PDM e muito mais. Ele já vem com algumas configurações e pacotes pré-instalados, como o PDM, Django, Django REST Framework, PostgreSQL, SQLite, Swagger, black, isort, Render, Cloudinary, Corsheaders, Django-Extensions, Django-Filter, dotenv, dj-database-url, drf-spectacular, gunicorn, netifaces, rest-framework-simplejwt, whitenoise e passage.id
 
 Esse template já está pronto para ser utilizado em produção, com o [Render](http://render.com) e o [PostgreSQL](https://www.postgresql.org/). Mas também pode ser utilizado em desenvolvimento, com o [PDM](https://pdm.fming.dev/) e o [SQLite](https://www.sqlite.org/index.html).

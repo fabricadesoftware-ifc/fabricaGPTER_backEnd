@@ -23,39 +23,26 @@ def create_patient_account(*, professional, data):
         user.set_password(data['password'])
         user.save()
         AccessProfile.objects.create(user=user, role=AccessProfile.Role.PATIENT)
-        patient = Patient.objects.create(
-            user=user,
-            professional=professional,
-            name=data['name'],
-            dominant_hand=data['dominant_hand'],
-            email=data['email'],
-            cpf=data['cpf'],
-            cep=data['cep'],
-            street=data['street'],
-            city=data['city'],
-            state=data['state'],
-            neighborhood=data['neighborhood'],
-            number=data['number'],
-            phone=data.get('phone'),
-            birth_date=data.get('birthDate'),
-            photo=data.get('photo'),
-        )
-    return patient
+        return create_patient_record(data, user=user, professional=professional)
+
+
+def create_patient_record(data, *, user=None, professional=None):
+    fields = {field: data[field] for field in PATIENT_FIELDS if field in data}
+    return Patient.objects.create(user=user, professional=professional,
+                                  birth_date=data.get('birthDate'), **fields)
 
 
 def update_patient(patient, data):
     with transaction.atomic():
         user = patient.user
         user_fields = []
-        if 'username' in data:
+        if user and 'username' in data:
             user.username = data['username']
             user_fields.append('username')
-        if 'name' in data:
-            patient.name = data['name']
+        if user and 'name' in data:
             user.first_name = data['name']
             user_fields.append('first_name')
-        if 'email' in data:
-            patient.email = data['email']
+        if user and 'email' in data:
             user.email = data['email']
             user_fields.append('email')
         if user_fields:
@@ -79,6 +66,8 @@ def deactivate_patient(patient):
             patient.status = Patient.Status.INACTIVE
             patient.save(update_fields=['status', 'updated_at'])
         user = patient.user
+        if user is None:
+            return patient
         if user.is_active:
             user.is_active = False
             user.save(update_fields=['is_active'])

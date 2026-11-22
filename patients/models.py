@@ -13,9 +13,9 @@ class Patient(models.Model):
         INACTIVE = 'inativo', 'Inativo'
 
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-                                related_name='patient')
+                                related_name='patient', null=True, blank=True)
     professional = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
-                                     related_name='patients')
+                                     related_name='patients', null=True, blank=True)
     name = models.CharField(max_length=150)
     email = models.EmailField(max_length=254)
     cpf = models.CharField(max_length=11, unique=True)
@@ -52,7 +52,7 @@ class Patient(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.name} ({self.user.get_username()})'
+        return f'{self.name} ({self.user.get_username()})' if self.user_id else self.name
 
     @property
     def address(self):

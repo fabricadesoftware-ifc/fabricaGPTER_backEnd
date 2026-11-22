@@ -22,7 +22,7 @@ def patient_data(patient):
     user = patient.user
     return {
         'id': patient.pk,
-        'username': user.get_username(),
+        'username': user.get_username() if user else None,
         'name': patient.name,
         'email': patient.email,
         'cpf': patient.cpf,
@@ -76,7 +76,7 @@ def _validate_email(value, *, patient=None):
         patients = patients.exclude(pk=patient.pk)
         users = users.exclude(pk=patient.user_id)
     if patients.exists() or users.exists():
-        raise serializers.ValidationError('Este e-mail já está cadastrado.')
+        raise serializers.ValidationError('Este e-mail já está cadastrado.', code='unique')
     return value
 
 
@@ -89,7 +89,7 @@ def _validate_cpf_value(value, *, patient=None):
     if patient is not None:
         query = query.exclude(pk=patient.pk)
     if query.exists():
-        raise serializers.ValidationError('Este CPF já está cadastrado.')
+        raise serializers.ValidationError('Este CPF já está cadastrado.', code='unique')
     return cpf
 
 
@@ -122,11 +122,8 @@ def _validate_password_value(value, attrs, confirmation):
     return value
 
 
-class PatientCreateSerializer(serializers.Serializer):
+class PatientRegistrationSerializer(serializers.Serializer):
     dominantHand = serializers.ChoiceField(source='dominant_hand', choices=Patient.DominantHand.choices)
-    username = serializers.CharField(max_length=150)
-    password = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
-    confirmation = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
     name = serializers.CharField(max_length=150)
     email = serializers.EmailField(max_length=254)
     cpf = serializers.CharField(max_length=14)
@@ -140,9 +137,6 @@ class PatientCreateSerializer(serializers.Serializer):
     birthDate = serializers.DateField(required=False, allow_null=True,
                                       input_formats=['%Y-%m-%d'])
     photo = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True)
-
-    def validate_username(self, value):
-        return _validate_username(value)
 
     def validate_email(self, value):
         return _validate_email(value)
@@ -174,6 +168,19 @@ class PatientCreateSerializer(serializers.Serializer):
                 raise serializers.ValidationError({field: ['Este campo é obrigatório.']})
         attrs['phone'] = _clean_text(attrs.get('phone')) or None
         attrs['photo'] = _clean_text(attrs.get('photo')) or None
+        return attrs
+
+
+class PatientCreateSerializer(PatientRegistrationSerializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
+    confirmation = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
+
+    def validate_username(self, value):
+        return _validate_username(value)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
         password = attrs.get('password')
         _validate_password_value(password, attrs, attrs.get('confirmation'))
         return attrs
