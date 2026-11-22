@@ -90,12 +90,21 @@ class PatientPermissionTests(PatientApiTestCase):
         self.assertEqual(profile.status_code, 200)
         self.assertEqual(profile.json()['profileId'], self.patient.pk)
 
-    def test_professional_cannot_access_another_professionals_patient(self):
+    def test_professionals_can_read_shared_patients(self):
+        for username in ('professional', 'other-professional'):
+            self.login(username)
+            listing = self.client.get('/api/patients/').json()
+            self.assertEqual({item['id'] for item in listing['results']},
+                             {self.patient.pk, self.other_patient.pk})
+            for patient in (self.patient, self.other_patient):
+                self.assertEqual(self.client.get(f'/api/patients/{patient.pk}/').status_code, 200)
+
+    def test_professional_cannot_modify_another_professionals_patient(self):
         self.login()
-        self.assert_error(self.client.get(f'/api/patients/{self.other_patient.pk}/'),
-                          404, 'not_found')
-        listing = self.client.get('/api/patients/').json()
-        self.assertEqual([item['id'] for item in listing['results']], [self.patient.pk])
+        url = f'/api/patients/{self.other_patient.pk}/'
+        headers = {'HTTP_X_CSRFTOKEN': self.token, 'HTTP_ORIGIN': ORIGIN}
+        self.assertEqual(self.client.patch(url, {'name': 'Alterado'}, format='json', **headers).status_code, 404)
+        self.assertEqual(self.client.delete(url, **headers).status_code, 404)
 
     def test_profile_ids_distinguish_account_from_profile(self):
         self.login('patient')
@@ -301,14 +310,14 @@ class PatientListAndDetailTests(PatientApiTestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(set(data), {'results', 'count', 'page', 'page_size'})
-        self.assertEqual(data['count'], 3)
+        self.assertEqual(data['count'], 4)
         self.assertEqual(data['page'], 1)
         self.assertEqual(data['page_size'], 2)
         self.assertEqual([item['name'] for item in data['results']],
                          ['Ana Paciente', 'Bruno Paciente'])
 
         page_two = self.client.get('/api/patients/?page=2&page_size=2').json()
-        self.assertEqual([item['name'] for item in page_two['results']], ['Carla Paciente'])
+        self.assertEqual([item['name'] for item in page_two['results']], ['Carla Paciente', 'Paciente Alheio'])
 
         search = self.client.get('/api/patients/?search=bru').json()
         self.assertEqual(search['count'], 1)
@@ -316,7 +325,7 @@ class PatientListAndDetailTests(PatientApiTestCase):
 
         ordered = self.client.get('/api/patients/?ordering=-name').json()
         self.assertEqual([item['name'] for item in ordered['results']],
-                         ['Carla Paciente', 'Bruno Paciente', 'Ana Paciente'])
+                         ['Paciente Alheio', 'Carla Paciente', 'Bruno Paciente', 'Ana Paciente'])
 
     def test_detail_does_not_depend_on_listing(self):
         self.login()
@@ -458,6 +467,20 @@ class AssessmentTests(PatientApiTestCase):
         self.assertEqual(self.client.post(other, {}, **headers).status_code, 404)
         self.assertEqual(self.client.get(f"{other}{created.json()['id']}/").status_code, 404)
 
+    def test_other_professional_can_read_history_but_not_modify_it(self):
+        self.login()
+        url = f'/api/patients/{self.patient.pk}/assessments/'
+        headers = dict(format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
+        assessment_id = self.client.post(url, {}, **headers).json()['id']
+        self.login('other-professional')
+        self.assertEqual(self.client.get(url).json()['results'][0]['id'], assessment_id)
+        self.assertEqual(self.client.get(f'{url}{assessment_id}/').status_code, 200)
+        self.assertEqual(self.client.get('/api/assessments/', {'patient': self.patient.pk}).status_code, 200)
+        self.assertEqual(self.client.get(f'/api/assessments/{assessment_id}/').status_code, 200)
+        headers['HTTP_X_CSRFTOKEN'] = self.token
+        self.assertEqual(self.client.post(url, {}, **headers).status_code, 404)
+        self.assertEqual(self.client.patch(f'{url}{assessment_id}/', {'observations': 'x'}, **headers).status_code, 404)
+
     def test_vue_recording_round_trip_and_retry(self):
         self.login()
         headers = dict(format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
@@ -482,7 +505,7 @@ class AssessmentTests(PatientApiTestCase):
         self.assertNotIn('measurements', summary)
         self.assertEqual(summary['id'], pk)
         self.login('other-professional')
-        self.assertEqual(self.client.get(detail).status_code, 404)
+        self.assertEqual(self.client.get(detail).status_code, 200)
         headers['HTTP_X_CSRFTOKEN'] = self.token
         self.assertEqual(self.client.patch(detail, body, **headers).status_code, 404)
 
