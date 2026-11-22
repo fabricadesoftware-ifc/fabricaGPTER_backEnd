@@ -1,5 +1,4 @@
 from django.db import IntegrityError
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
@@ -55,9 +54,8 @@ class PublicPatientRegistrationView(APIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-def readable_patients(professional):
-    return Patient.objects.select_related('user').filter(
-        Q(professional=professional) | Q(professional__isnull=True))
+def readable_patients():
+    return Patient.objects.select_related('user').all()
 
 
 @method_decorator(sensitive_post_parameters('password', 'confirmation'), name='dispatch')
@@ -68,7 +66,7 @@ class PatientListView(APIView):
     pagination_class = PatientPagination
 
     def get_queryset(self):
-        queryset = readable_patients(self.request.user)
+        queryset = readable_patients()
         search = self.request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(name__icontains=search)
@@ -125,7 +123,7 @@ class PatientDetailView(APIView):
         )
 
     def get(self, request, pk):
-        patient = get_object_or_404(readable_patients(request.user), pk=pk)
+        patient = get_object_or_404(readable_patients(), pk=pk)
         return Response(patient_data(patient))
 
     def patch(self, request, pk):
@@ -215,12 +213,13 @@ class AssessmentView(generics.GenericAPIView):
     parser_classes = [JSONParser]
     serializer_class = AssessmentSerializer
 
-    def get_patient(self, patient_id):
+    def get_patient(self, patient_id, *, shared=False):
         value = str(patient_id)
         if not (value.isascii() and value.isdecimal() and len(value) <= 19
                 and 0 < int(value) <= 2**63 - 1):
             raise FieldValidationError({'patient': ['Informe o identificador do paciente.']})
-        return get_object_or_404(Patient, pk=int(patient_id), professional=self.request.user)
+        queryset = Patient.objects.all() if shared else Patient.objects.filter(professional=self.request.user)
+        return get_object_or_404(queryset, pk=int(patient_id))
 
     def save_assessment(self, serializer, **kwargs):
         if not serializer.is_valid():
@@ -232,7 +231,8 @@ class AssessmentListView(AssessmentView):
     pagination_class = PatientPagination
 
     def get(self, request, patient_id=None):
-        patient = self.get_patient(patient_id if patient_id is not None else request.query_params.get('patient'))
+        patient = self.get_patient(
+            patient_id if patient_id is not None else request.query_params.get('patient'), shared=True)
         page = self.paginate_queryset(patient.assessments.defer('measurements').order_by('-pk'))
         return self.get_paginated_response(AssessmentSummarySerializer(page, many=True).data)
 
@@ -251,7 +251,9 @@ class AssessmentListView(AssessmentView):
 
 class AssessmentDetailView(AssessmentView):
     def get_object(self):
-        queryset = Assessment.objects.filter(patient__professional=self.request.user)
+        queryset = Assessment.objects.all()
+        if self.request.method != 'GET':
+            queryset = queryset.filter(patient__professional=self.request.user)
         if 'patient_id' in self.kwargs:
             queryset = queryset.filter(patient_id=self.kwargs['patient_id'])
         return get_object_or_404(queryset, pk=self.kwargs['pk'])
