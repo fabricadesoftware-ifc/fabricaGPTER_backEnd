@@ -1,11 +1,14 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
 from rest_framework import generics, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import JSONParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -15,22 +18,57 @@ from accounts.models import AccessProfile, ProfessionalProfile
 from .models import Assessment, Patient
 from .pagination import PatientPagination
 from .permissions import IsProfessional
-from .serializers import (AssessmentSerializer, AssessmentSummarySerializer, PatientCreateSerializer, PatientUpdateSerializer,
-                          patient_data)
-from .services import create_patient_account, deactivate_patient, update_patient
+from .serializers import (AssessmentSerializer, AssessmentSummarySerializer, PatientCreateSerializer,
+                          PatientRegistrationSerializer, PatientUpdateSerializer, patient_data)
+from .services import create_patient_account, create_patient_record, deactivate_patient, update_patient
 
 ORDERING_FIELDS = {'name', 'status', 'created_at', 'updated_at'}
 
 
+class RegistrationThrottle(SimpleRateThrottle):
+    scope = 'patient_registration'
+
+    def get_cache_key(self, request, view):
+        ident = request.META.get('REMOTE_ADDR') or 'unknown'
+        return self.cache_format % {'scope': self.scope, 'ident': ident}
+
+
+@method_decorator(never_cache, name='dispatch')
+class PublicPatientRegistrationView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    parser_classes = [JSONParser]
+    throttle_classes = [RegistrationThrottle]
+
+    def post(self, request):
+        serializer = PatientRegistrationSerializer(data=request.data)
+        if not serializer.is_valid():
+            for field in ('cpf', 'email'):
+                if any(error.code == 'unique' for error in serializer.errors.get(field, [])):
+                    raise ConflictError()
+            raise FieldValidationError(serializer.errors)
+        try:
+            with transaction.atomic():
+                create_patient_record(serializer.validated_data)
+        except IntegrityError:
+            raise ConflictError() from None
+        return Response(status=status.HTTP_201_CREATED)
+
+
+def readable_patients(professional):
+    return Patient.objects.select_related('user').filter(
+        Q(professional=professional) | Q(professional__isnull=True, user__isnull=True))
+
+
 @method_decorator(sensitive_post_parameters('password', 'confirmation'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class PatientListView(APIView):
     permission_classes = [IsAuthenticated, IsProfessional]
     parser_classes = [JSONParser]
     pagination_class = PatientPagination
 
     def get_queryset(self):
-        queryset = Patient.objects.select_related('user').filter(
-            professional=self.request.user)
+        queryset = readable_patients(self.request.user)
         search = self.request.query_params.get('search', '').strip()
         if search:
             queryset = queryset.filter(name__icontains=search)
@@ -74,6 +112,7 @@ class PatientListView(APIView):
 
 
 @method_decorator(sensitive_post_parameters('password', 'confirmation'), name='dispatch')
+@method_decorator(never_cache, name='dispatch')
 class PatientDetailView(APIView):
     permission_classes = [IsAuthenticated, IsProfessional]
     parser_classes = [JSONParser]
@@ -86,7 +125,8 @@ class PatientDetailView(APIView):
         )
 
     def get(self, request, pk):
-        return Response(patient_data(self.get_object()))
+        patient = get_object_or_404(readable_patients(request.user), pk=pk)
+        return Response(patient_data(patient))
 
     def patch(self, request, pk):
         patient = self.get_object()
