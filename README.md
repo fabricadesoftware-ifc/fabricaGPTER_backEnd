@@ -66,6 +66,21 @@ O projeto também já vem com a documentação da API, gerada automaticamente pe
 
 ## Uso da API
 
+### Avaliações
+
+O início de um teste é registrado ao criar a avaliação com `POST /api/assessments/`
+(ou `POST /api/patients/<patient_id>/assessments/`). A criação deve ser chamada
+quando o teste for efetivamente iniciado. O servidor gera `started_at`, retornado
+em UTC no formato ISO 8601; a aplicação cliente pode convertê-lo para o fuso local.
+O campo não pode ser informado ou alterado pelo cliente. Avaliações anteriores à
+migração retornam `started_at: null`, pois seu horário de início é desconhecido.
+
+O histórico está disponível em `GET /api/assessments/?patient=<id>` e o detalhe em
+`GET /api/assessments/<id>/` ou `GET /api/patients/<patient_id>/assessments/<id>/`.
+O detalhe inclui o identificador do paciente, dados da avaliação e observações.
+Profissionais autenticados podem consultar o histórico compartilhado; a criação e
+alteração permanecem restritas ao profissional associado ao paciente.
+
 A documentação completa dos endpoints da API e exemplos de uso estão disponíveis na [Documentação da API](http://localhost:19003/api/swagger/).
 
 ## Comandos Úteis
