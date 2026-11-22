@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import TemplateView
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -16,6 +17,8 @@ handler404 = 'accounts.errors.not_found'
 handler500 = 'accounts.errors.server_error'
 
 urlpatterns = [
+    path('cadastro/paciente/', TemplateView.as_view(
+        template_name='patients/registration.html'), name='patient-registration-form'),
     path('', health_check, name='root-health-check'),
     path('api/auth/', include('accounts.urls')),
     path('api/', include('patients.urls')),
