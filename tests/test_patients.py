@@ -3,11 +3,13 @@ from django.contrib.sessions.models import Session
 from django.core.cache import cache
 from django.db import IntegrityError
 from django.test import TestCase, override_settings
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from unittest import mock
 from rest_framework.test import APIClient
 
 from accounts.models import AccessProfile, ProfessionalProfile
-from patients.models import Patient
+from patients.models import Assessment, Patient
 from tests.helpers import create_patient, create_user_with_profile, make_cpf
 
 User = get_user_model()
@@ -445,6 +447,52 @@ class PatientUpdateAndDeleteTests(PatientApiTestCase):
 
 @override_settings(**CSRF_SETTINGS)
 class AssessmentTests(PatientApiTestCase):
+    def test_start_time_is_recorded_in_utc_and_returned_in_detail_and_history(self):
+        self.login()
+        headers = dict(format='json', HTTP_X_CSRFTOKEN=self.token, HTTP_ORIGIN=ORIGIN)
+        before = timezone.now()
+        response = self.client.post('/api/assessments/', {
+            'patient': self.patient.pk, 'arm': 'Direita', 'seconds': 30,
+            'observations': 'Observação do teste',
+        }, **headers)
+        after = timezone.now()
+        self.assertEqual(response.status_code, 201, response.content)
+        data = response.json()
+        started_at = parse_datetime(data['started_at'])
+        self.assertTrue(data['started_at'].endswith('Z'))
+        self.assertLessEqual(before, started_at)
+        self.assertLessEqual(started_at, after)
+        assessment = Assessment.objects.get(pk=data['id'])
+        self.assertEqual(assessment.started_at, started_at)
+        detail = self.client.get(f"/api/assessments/{data['id']}/").json()
+        self.assertEqual(detail['patient'], self.patient.pk)
+        self.assertEqual(detail['observations'], 'Observação do teste')
+        self.assertEqual(detail['started_at'], data['started_at'])
+        history = self.client.get('/api/assessments/', {'patient': self.patient.pk}).json()
+        self.assertEqual(history['results'][0]['started_at'], data['started_at'])
+
+        for method, url, body in (
+            (self.client.post, '/api/assessments/', {'patient': self.patient.pk, 'started_at': '2000-01-01T00:00:00Z'}),
+            (self.client.patch, f"/api/assessments/{data['id']}/", {'started_at': '2000-01-01T00:00:00Z'}),
+        ):
+            rejected = method(url, body, **headers)
+            self.assertEqual(rejected.status_code, 400)
+        assessment.refresh_from_db()
+        self.assertEqual(assessment.started_at, started_at)
+
+    def test_detail_permissions_missing_and_legacy_start_time(self):
+        assessment = Assessment.objects.create(patient=self.patient)
+        Assessment.objects.filter(pk=assessment.pk).update(started_at=None)
+        detail = f'/api/assessments/{assessment.pk}/'
+        self.assert_error(self.client.get(detail), 401, 'not_authenticated')
+        self.login('patient')
+        self.assert_error(self.client.get(detail), 403, 'permission_denied')
+        self.login()
+        self.assertIsNone(self.client.get(detail).json()['started_at'])
+        self.assert_error(self.client.get('/api/assessments/999999/'), 404, 'not_found')
+        self.assert_error(self.client.get(
+            f'/api/patients/{self.other_patient.pk}/assessments/{assessment.pk}/'), 404, 'not_found')
+
     def test_assessment_lifecycle(self):
         self.login()
         url = f'/api/patients/{self.patient.pk}/assessments/'
