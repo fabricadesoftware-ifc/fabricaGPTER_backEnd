@@ -74,3 +74,4 @@ class Assessment(models.Model):
         ('validated', 'Validado'), ('cancelled', 'Cancelado'),
     ])
     date = models.DateField(null=True, editable=False)
+    started_at = models.DateTimeField(auto_now_add=True, null=True)

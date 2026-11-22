@@ -1,6 +1,6 @@
 import sys
 import re
-from datetime import date
+from datetime import date, timezone as datetime_timezone
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -256,9 +256,11 @@ class PatientUpdateSerializer(serializers.Serializer):
 
 
 class AssessmentSummarySerializer(serializers.ModelSerializer):
+    started_at = serializers.DateTimeField(read_only=True, default_timezone=datetime_timezone.utc)
+
     class Meta:
         model = Assessment
-        fields = ('id', 'patient', 'arm', 'seconds', 'date', 'status', 'observations')
+        fields = ('id', 'patient', 'arm', 'seconds', 'date', 'started_at', 'status', 'observations')
         read_only_fields = ('patient',)
 
 
