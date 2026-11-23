@@ -87,7 +87,7 @@ A documentação completa dos endpoints da API e exemplos de uso estão disponí
 
 - `pdm run dev`: Executa o servidor de desenvolvimento. Antes de executar o servidor, descobre o endereço IP da máquina e atualiza o arquivo `.env` com o endereço IP.
 - `pdm run migrate`: Executa as migrações do banco de dados. Antes de executar o `migrate`, executa o `makemigrations`. Depois de executar o `migrate`, executa o `graph_models`, atualizando o diagrama de classes dos modelos do projeto.
-- Para mais detalhes, consulte o arquivo `pyproject.toml`, na seção `[tool.pdm.scripts]`.
+- Para mais detalhes, consulte o arquivo `pyproject.toml` na seção `[tool.pdm.scripts]`.
 
 ## Detalhes do Projeto
 
