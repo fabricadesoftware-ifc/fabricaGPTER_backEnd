@@ -1,22 +1,29 @@
-"""
-URL configuration for config project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+from django.views.generic import TemplateView
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+from .site_views import SupportView, TermsView
+
+@api_view(['GET'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({'status': 'ok'})
+
+handler404 = 'accounts.errors.not_found'
+handler500 = 'accounts.errors.server_error'
 
 urlpatterns = [
+    path('cadastro/paciente/', TemplateView.as_view(
+        template_name='patients/registration.html'), name='patient-registration-form'),
+    path('', health_check, name='root-health-check'),
+    path('api/auth/', include('accounts.urls')),
+    path('api/', include('patients.urls')),
+    path('api/support/', SupportView.as_view(), name='support'),
+    path('api/terms/', TermsView.as_view(), name='terms'),
     path('admin/', admin.site.urls),
+    path('api/health/', health_check, name='health-check'),
 ]

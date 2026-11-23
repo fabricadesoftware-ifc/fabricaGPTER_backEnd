@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cadastro de paciente · GPTER</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f1f6f5; color: #193c37; font: 1rem/1.5 Inter, sans-serif; }
+    main { max-width: 42rem; margin: auto; padding: 2rem clamp(1rem, 4vw, 3rem); background: white; }
+    h1 { margin-bottom: .25rem; line-height: 1.15; }
+    fieldset { margin: 1.5rem 0; padding: 0; border: 0; }
+    legend { font-size: 1.25rem; font-weight: bold; }
+    label { display: block; margin-top: .75rem; }
+    input, select, button { width: 100%; padding: .65rem; font: inherit; border-radius: .35rem; }
+    input, select { border: 1px solid #64837c; background: white; }
+    button { border: 0; background: #19594f; color: white; cursor: pointer; }
+    button:disabled { opacity: .65; }
+    #message { white-space: pre-line; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Cadastro de paciente</h1>
+  <p>Os profissionais do GPTER poderão consultar os dados informados neste formulário.</p>
+  <noscript>Ative o JavaScript para enviar o cadastro.</noscript>
+  <form method="post" action="{% url 'patients:public-registration' %}">
+    <fieldset>
+      <legend>Dados pessoais</legend>
+      <label>Nome completo<input name="name" autocomplete="name" maxlength="150" required></label>
+      <label>E-mail<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+      <label>CPF<input name="cpf" maxlength="14" inputmode="numeric" required></label>
+      <label>Mão dominante<select name="dominantHand" required>
+        <option value="">Selecione</option><option>Direita</option><option>Esquerda</option>
+      </select></label>
+      <label>Telefone (opcional)<input name="phone" type="tel" maxlength="20" autocomplete="tel"></label>
+      <label>Data de nascimento (opcional)<input type="date" name="birthDate" autocomplete="bday"></label>
+    </fieldset>
+    <fieldset>
+      <legend>Endereço</legend>
+      <label>CEP<input name="cep" autocomplete="postal-code" maxlength="9" inputmode="numeric" required></label>
+      <label>Logradouro<input name="street" autocomplete="address-line1" maxlength="255" required></label>
+      <label>Número<input name="number" maxlength="20" required></label>
+      <label>Bairro<input name="neighborhood" maxlength="255" required></label>
+      <label>Cidade<input name="city" autocomplete="address-level2" maxlength="255" required></label>
+      <label>UF<input name="state" autocomplete="address-level1" maxlength="2" required></label>
+    </fieldset>
+    <fieldset>
+      <legend>Acesso ao sistema</legend>
+      <label>Usuário<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="150" required></label>
+      <label>Senha<input type="password" name="password" autocomplete="new-password" maxlength="4096" required></label>
+      <label>Confirmar senha<input type="password" name="confirmation" autocomplete="new-password" maxlength="4096" required></label>
+    </fieldset>
+    <button type="submit">Enviar cadastro</button>
+  </form>
+  <p id="message" role="status" tabindex="-1"></p>
+</main>
+<script>
+  const form = document.querySelector('form');
+  const button = form.querySelector('button');
+  const message = document.getElementById('message');
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    button.disabled = true;
+    message.textContent = 'Enviando cadastro…';
+    const data = Object.fromEntries(new FormData(form));
+    if (!data.birthDate) delete data.birthDate;
+    try {
+      const response = await fetch(form.action, {
+        method: 'POST', credentials: 'omit',
+        headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data)
+      });
+      if (response.status === 201) {
+        form.reset();
+        form.hidden = true;
+        message.textContent = 'Cadastro realizado. Você já pode entrar com seu usuário e sua senha.';
+      } else {
+        const {error} = await response.json();
+        const details = Object.entries(error.fields || {}).map(([name, errors]) => {
+          const label = form.elements.namedItem(name)?.labels?.[0]?.firstChild?.textContent;
+          return [label, errors.join(' ')].filter(Boolean).join(' — ');
+        });
+        message.textContent = [error.message, ...details].join('\n');
+      }
+    } catch {
+      message.textContent = 'Não foi possível confirmar o envio. Verifique a conexão e tente novamente.';
+    } finally {
+      button.disabled = false;
+      message.focus();
+    }
+  });
+</script>
+</body>
+</html>

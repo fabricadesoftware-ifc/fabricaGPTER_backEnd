@@ -1,58 +1,24 @@
 [project]
-name = "fabricaGPTER_backEnd"
+name = "fabricagpter-backend"
 version = "0.1.0"
-description = "Backend Django do projeto FabricaGPTER"
-authors = [
-    {name = "Guilherme Schreiber", email = "guilhermeschreieber2007@gmail.com"},
-    {name = "Erick Chaves Fiamoncini", email = "erickechaves@gmail.com"},
-    {name = "Daniel dos Santos Hinsching", email = "danielsantoshinsching@gmail.com"}
-]
+description = "Base da API do projeto Fábrica GPTER"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "django>=4.2.23",
-    "django-extensions>=4.1",
-    "pydotplus>=2.0.2",
-    "python-dotenv>=1.1.0",
-    "netifaces>=0.11.0",
-    "djangorestframework>=3.16.0",
-    "djangorestframework-simplejwt>=5.5.1"
+    "django>=5.2.8,<5.3",
+    "djangorestframework>=3.16,<3.17",
+    "django-cors-headers>=4.9,<5",
+    "python-dotenv>=1.1,<2",
+    "dj-database-url>=2.3,<3",
+    "gunicorn>=23,<24",
+    "psycopg[binary]>=3.2,<4",
+    "whitenoise>=6.9,<7",
 ]
-requires-python = ">=3.9"
-readme = "README.md"
-license = {text = "MIT"}
 
 [tool.pdm]
 distribution = false
 
 [tool.pdm.scripts]
-# Ambiente de desenvolvimento
-pre_dev = "python ./scripts/set_my_ip.py"
-dev = "python manage.py runserver 0.0.0.0:19003"
-
-# Banco de dados
-pre_migrate = "python manage.py makemigrations"
-migrate = "python manage.py migrate"
-post_migrate = "python manage.py graph_models -S -g -o core.png core"
-
-# Administração
-createsuperuser = "python manage.py createsuperuser"
-shell = "python manage.py shell"
-shellp = "python manage.py shell_plus"
-
-# Testes
+dev = "python manage.py runserver 127.0.0.1:19003"
 test = "python manage.py test"
-
-# Dados
-loaddata = "python manage.py loaddata core.json"
-dumpdata = "python manage.py dumpdata --indent 2"
-
-# Utilitários
-cria_api = "python ./scripts/cria_api.py {args}"
-
-# Lint e formatação
-check = "ruff check"
-pre_format = "ruff check --fix"
-format = "ruff format"
-
-[tool.ruff]
-line-length = 88
-target-version = "py39"
+check = "python manage.py check"
+migrate = "python manage.py migrate"

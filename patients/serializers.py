@@ -1,0 +1,312 @@
+import sys
+import re
+from datetime import date, timezone as datetime_timezone
+
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
+from django.utils import timezone
+from rest_framework import serializers
+
+from accounts.errors import ConflictError
+
+from .models import Assessment, Patient
+from .validators import normalize_cep, normalize_cpf, normalize_state
+
+User = get_user_model()
+USERNAME_RE = re.compile(r'^[\w.@+-]+$')
+
+
+def patient_data(patient):
+    user = patient.user
+    return {
+        'id': patient.pk,
+        'username': user.get_username() if user else None,
+        'name': patient.name,
+        'email': patient.email,
+        'cpf': patient.cpf,
+        'dominantHand': patient.dominant_hand,
+        'cep': patient.cep,
+        'street': patient.street,
+        'city': patient.city,
+        'state': patient.state,
+        'neighborhood': patient.neighborhood,
+        'number': patient.number,
+        'address': patient.address,
+        'status': patient.status,
+        'phone': patient.phone,
+        'birthDate': patient.birth_date.isoformat() if patient.birth_date else None,
+        'photo': patient.photo,
+    }
+
+
+def _clean_text(value, *, collapse=False):
+    value = str(value or '').strip()
+    if collapse:
+        value = ' '.join(value.split())
+    return value
+
+
+def _validate_username(value, *, user_id=None):
+    value = _clean_text(value)
+    if not value:
+        raise serializers.ValidationError('Informe o usuário.')
+    if len(value) > 150:
+        raise serializers.ValidationError('O usuário deve ter no máximo 150 caracteres.')
+    if not USERNAME_RE.match(value):
+        raise serializers.ValidationError(
+            'Use apenas letras, números e os caracteres @ . + - _.'
+        )
+    query = User.objects.filter(username__iexact=value)
+    if user_id is not None:
+        query = query.exclude(pk=user_id)
+    if query.exists():
+        raise serializers.ValidationError('Este usuário já está cadastrado.', code='unique')
+    return value
+
+
+def _validate_email(value, *, patient=None):
+    value = _clean_text(value).lower()
+    if not value:
+        raise serializers.ValidationError('Informe o e-mail.')
+    patients = Patient.objects.filter(email__iexact=value)
+    users = User.objects.filter(email__iexact=value)
+    if patient is not None:
+        patients = patients.exclude(pk=patient.pk)
+        users = users.exclude(pk=patient.user_id)
+    if patients.exists() or users.exists():
+        raise serializers.ValidationError('Este e-mail já está cadastrado.', code='unique')
+    return value
+
+
+def _validate_cpf_value(value, *, patient=None):
+    try:
+        cpf = normalize_cpf(value)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError(exc.messages) from None
+    query = Patient.objects.filter(cpf=cpf)
+    if patient is not None:
+        query = query.exclude(pk=patient.pk)
+    if query.exists():
+        raise serializers.ValidationError('Este CPF já está cadastrado.', code='unique')
+    return cpf
+
+
+def _validate_cep_value(value):
+    try:
+        return normalize_cep(value)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError(exc.messages) from None
+
+
+def _validate_state_value(value):
+    try:
+        return normalize_state(value)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError(exc.messages) from None
+
+
+def _validate_password_value(value, attrs, confirmation):
+    if not value:
+        raise serializers.ValidationError({'password': ['Informe a senha.']})
+    if value != confirmation:
+        raise serializers.ValidationError(
+            {'confirmation': ['A confirmação não confere com a senha.']})
+    user = User(username=attrs.get('username', ''), email=attrs.get('email', ''),
+                first_name=attrs.get('name', ''))
+    try:
+        validate_password(value, user=user)
+    except DjangoValidationError as exc:
+        raise serializers.ValidationError({'password': list(exc.messages)}) from None
+    return value
+
+
+class PatientRegistrationSerializer(serializers.Serializer):
+    dominantHand = serializers.ChoiceField(source='dominant_hand', choices=Patient.DominantHand.choices)
+    name = serializers.CharField(max_length=150)
+    email = serializers.EmailField(max_length=254)
+    cpf = serializers.CharField(max_length=14)
+    cep = serializers.CharField(max_length=9)
+    street = serializers.CharField(max_length=255)
+    city = serializers.CharField(max_length=255)
+    state = serializers.CharField(max_length=2)
+    neighborhood = serializers.CharField(max_length=255)
+    number = serializers.CharField(max_length=20)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
+    birthDate = serializers.DateField(required=False, allow_null=True,
+                                      input_formats=['%Y-%m-%d'])
+    photo = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True)
+
+    def validate_email(self, value):
+        return _validate_email(value)
+
+    def validate_cpf(self, value):
+        return _validate_cpf_value(value)
+
+    def validate_cep(self, value):
+        return _validate_cep_value(value)
+
+    def validate_state(self, value):
+        return _validate_state_value(value)
+
+    def validate_birthDate(self, value):
+        if value and value > date.today():
+            raise serializers.ValidationError('A data de nascimento não pode ser futura.')
+        return value
+
+    def validate(self, attrs):
+        attrs['name'] = _clean_text(attrs['name'], collapse=True)
+        attrs['street'] = _clean_text(attrs['street'], collapse=True)
+        attrs['city'] = _clean_text(attrs['city'], collapse=True)
+        attrs['neighborhood'] = _clean_text(attrs['neighborhood'], collapse=True)
+        attrs['number'] = _clean_text(attrs['number'])
+        if not attrs['name']:
+            raise serializers.ValidationError({'name': ['Informe o nome.']})
+        for field in ('street', 'city', 'neighborhood', 'number'):
+            if not attrs[field]:
+                raise serializers.ValidationError({field: ['Este campo é obrigatório.']})
+        attrs['phone'] = _clean_text(attrs.get('phone')) or None
+        attrs['photo'] = _clean_text(attrs.get('photo')) or None
+        return attrs
+
+
+class PatientCreateSerializer(PatientRegistrationSerializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
+    confirmation = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True)
+
+    def validate_username(self, value):
+        return _validate_username(value)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        password = attrs.get('password')
+        _validate_password_value(password, attrs, attrs.get('confirmation'))
+        return attrs
+
+
+class PatientUpdateSerializer(serializers.Serializer):
+    dominantHand = serializers.ChoiceField(source='dominant_hand', choices=Patient.DominantHand.choices, required=False)
+    username = serializers.CharField(max_length=150, required=False)
+    password = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True,
+                                     required=False, allow_blank=True, allow_null=True)
+    confirmation = serializers.CharField(max_length=4096, trim_whitespace=False, write_only=True,
+                                         required=False, allow_blank=True, allow_null=True)
+    name = serializers.CharField(max_length=150, required=False)
+    email = serializers.EmailField(max_length=254, required=False)
+    cpf = serializers.CharField(max_length=14, required=False)
+    cep = serializers.CharField(max_length=9, required=False)
+    street = serializers.CharField(max_length=255, required=False)
+    city = serializers.CharField(max_length=255, required=False)
+    state = serializers.CharField(max_length=2, required=False)
+    neighborhood = serializers.CharField(max_length=255, required=False)
+    number = serializers.CharField(max_length=20, required=False)
+    phone = serializers.CharField(max_length=20, required=False, allow_blank=True, allow_null=True)
+    birthDate = serializers.DateField(required=False, allow_null=True,
+                                      input_formats=['%Y-%m-%d'])
+    photo = serializers.CharField(max_length=500, required=False, allow_blank=True, allow_null=True)
+
+    @property
+    def patient(self):
+        return self.context['patient']
+
+    def validate_username(self, value):
+        return _validate_username(value, user_id=self.patient.user_id)
+
+    def validate_email(self, value):
+        return _validate_email(value, patient=self.patient)
+
+    def validate_cpf(self, value):
+        return _validate_cpf_value(value, patient=self.patient)
+
+    def validate_cep(self, value):
+        return _validate_cep_value(value)
+
+    def validate_state(self, value):
+        return _validate_state_value(value)
+
+    def validate_birthDate(self, value):
+        if value and value > date.today():
+            raise serializers.ValidationError('A data de nascimento não pode ser futura.')
+        return value
+
+    def validate(self, attrs):
+        errors = {}
+        if attrs.get('password') or attrs.get('confirmation'):
+            errors['password'] = ['A senha não pode ser alterada por este endpoint.']
+        if 'name' in attrs:
+            attrs['name'] = _clean_text(attrs['name'], collapse=True)
+            if not attrs['name']:
+                errors['name'] = ['Informe o nome.']
+        for field in ('street', 'city', 'neighborhood', 'number'):
+            if field in attrs:
+                attrs[field] = _clean_text(attrs[field], collapse=field != 'number')
+                if not attrs[field]:
+                    errors[field] = ['Este campo é obrigatório.']
+        if 'phone' in attrs:
+            attrs['phone'] = _clean_text(attrs['phone']) or None
+        if 'photo' in attrs:
+            attrs['photo'] = _clean_text(attrs['photo']) or None
+        if errors:
+            raise serializers.ValidationError(errors)
+        attrs.pop('password', None)
+        attrs.pop('confirmation', None)
+        return attrs
+
+
+class AssessmentSummarySerializer(serializers.ModelSerializer):
+    started_at = serializers.DateTimeField(read_only=True, default_timezone=datetime_timezone.utc)
+
+    class Meta:
+        model = Assessment
+        fields = ('id', 'patient', 'arm', 'seconds', 'date', 'started_at', 'status', 'observations')
+        read_only_fields = ('patient',)
+
+
+class AssessmentSerializer(AssessmentSummarySerializer):
+    status = serializers.ChoiceField(choices=Assessment._meta.get_field('status').choices, required=False)
+
+    class Meta(AssessmentSummarySerializer.Meta):
+        fields = AssessmentSummarySerializer.Meta.fields + ('measurements',)
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            if 'observations' in data and not isinstance(data['observations'], str):
+                raise serializers.ValidationError({'observations': ['Informe um texto.']})
+            allowed = {'observations', 'status', 'measurements'}
+            if self.instance is None:
+                allowed.update(('arm', 'seconds'))
+            unknown = data.keys() - allowed
+            if unknown:
+                raise serializers.ValidationError({field: ['Campo desconhecido.'] for field in unknown})
+        return super().to_internal_value(data)
+
+    def validate_measurements(self, samples):
+        if not isinstance(samples, list) or not samples:
+            raise serializers.ValidationError('Envie uma lista de amostras com tempo e força.')
+        previous = -1
+        for index, sample in enumerate(samples):
+            if not isinstance(sample, dict) or sample.keys() != {'t', 'f'}:
+                raise serializers.ValidationError(f'Amostra {index}: informe t e f.')
+            for value in sample.values():
+                if type(value) not in (float, int) or not -sys.float_info.max <= value <= sys.float_info.max:
+                    raise serializers.ValidationError(f'Amostra {index}: use números finitos.')
+            t = float(sample['t'])
+            if t < 0 or t <= previous:
+                raise serializers.ValidationError(f'Amostra {index}: o tempo deve ser não negativo e crescente.')
+            previous = t
+        return [{'t': float(sample['t']), 'f': float(sample['f'])} for sample in samples]
+
+    def create(self, validated_data):
+        return Assessment.objects.create(date=timezone.localdate(), **validated_data)
+
+    def update(self, instance, validated_data):
+        query = Assessment.objects.filter(pk=instance.pk)
+        if 'measurements' in validated_data:
+            # Permit an identical retry while protecting a previously saved recording.
+            query = query.filter(Q(measurements=[]) | Q(measurements=validated_data['measurements']))
+        if validated_data and not query.update(**validated_data):
+            raise ConflictError('Esta avaliação já possui outra série de medições.')
+        instance.refresh_from_db()
+        return instance
